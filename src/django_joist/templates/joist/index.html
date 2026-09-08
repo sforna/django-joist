@@ -1,0 +1,44 @@
+{% load i18n %}<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>django-joist: Database Structure</title>
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cstyle%3E*%7Bstroke:%2312356b;fill:none;stroke-width:1.7%7D@media(prefers-color-scheme:dark)%7B*%7Bstroke:%235fd0e6%7D%7D%3C/style%3E%3Cpath d='M4 8 H28 M4 12 H28 M8 12 V26 M24 12 V26 M8 26 H24'/%3E%3C/svg%3E">
+
+    <link rel="preload" as="font" type="font/woff2"
+          href="{% url 'joist:asset' 'ibm-plex-mono-400.woff2' %}" crossorigin>
+    <link rel="stylesheet" href="{% url 'joist:asset' 'joist.css' %}">
+    {% if has_custom_theme %}
+    <link rel="stylesheet" href="{% url 'joist:theme' %}">
+    {% endif %}
+
+    <script src="{{ mermaid_url }}"></script>
+</head>
+<body>
+    <div
+        id="joist-app"
+        data-schema-endpoint="{% url 'joist:api_schema' %}"
+        data-export-endpoint="{% url 'joist:export' '__format__' %}"
+        data-connections='{{ connections|safe }}'
+        data-type-labels="{{ type_labels }}"
+        data-warn-above="{{ warn_above }}"
+        data-focus-depth="{{ focus_depth }}"
+        data-min-zoom="{{ min_zoom }}"
+        data-doctor-flag-tables="{% if doctor_flag_tables %}1{% else %}0{% endif %}"
+    >
+        <div class="joist-toolbar">
+            <span class="joist-brand">joist</span>
+        </div>
+        <main id="joist-viewport">
+            <div id="joist-canvas"></div>
+        </main>
+        <noscript>django-joist needs JavaScript to render the diagram. The
+            structure is also available via the JSON endpoint and the
+            <code>joist_export</code> management command.</noscript>
+    </div>
+
+    <script type="module" src="{% url 'joist:asset' 'joist.js' %}"></script>
+</body>
+</html>

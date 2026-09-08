@@ -29,6 +29,15 @@ CACHES = {
     }
 }
 
+MIDDLEWARE = [
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+]
+# Signed-cookie sessions: force_login needs a session store, and we do not
+# want a django_session table in the test DB (it would also pollute snapshots).
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
 ROOT_URLCONF = "tests.urls"
 TEMPLATES = [
     {

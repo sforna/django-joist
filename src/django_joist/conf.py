@@ -48,6 +48,10 @@ DEFAULTS: dict[str, Any] = {
         "alias": None,  # named cache from CACHES; None -> "default"
         "key_prefix": "joist",
     },
+    # ---- HTTP ---------------------------------------------------------------
+    # Base URL used only by joist_open to build a browsable link (the routes
+    # themselves are mounted by the host URLconf). Defaults to runserver.
+    "base_url": None,
     # ---- Authorization. Access is guarded by two independent layers, like
     # the reference: (1) ``enabled`` — the deploy switch; (2) the authorizer
     # — the access control: "who may view". The authorizer is consulted only
