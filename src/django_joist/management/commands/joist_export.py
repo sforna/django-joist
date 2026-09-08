@@ -1,6 +1,6 @@
 """joist export: write the database structure to a standard format.
 
-For CI, tooling, and version control. Structure only, never row data, and no
+For CI, tooling, and version control. Exports the schema only — never row data — and no
 network call beyond the local database, so it is safe in CI and commit hooks.
 
 Writes to stdout by default so it pipes cleanly; --output writes a file. The

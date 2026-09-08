@@ -18,7 +18,7 @@ class Command(JoistCommand):
     help = (
         "Review the database structure for problems visible from structure "
         "alone (missing primary keys, unindexed foreign keys, risky types). "
-        "Structure only, never row data."
+        "Only the structure is reviewed; row data is never read."
     )
 
     def add_arguments(self, parser):

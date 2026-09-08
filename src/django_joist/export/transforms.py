@@ -2,7 +2,7 @@
 
 Both run between table selection and rendering, so no generator learns about
 filtering or compactness: they just receive a leaner snapshot. Pure over the
-serialized table dicts, structure only, never row data.
+serialized table dicts. Schema only; row data is never read.
 """
 
 from __future__ import annotations

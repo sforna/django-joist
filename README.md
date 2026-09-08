@@ -26,7 +26,7 @@ row data is never queried or exposed.
   when a committed schema file drifts.
 - Feed your real structure to a coding agent as grounding context:
   annotations for business meaning, `--compact` to trim tokens, `--focus` to
-  narrow to one neighbourhood. Structure only, never data.
+  narrow to one neighbourhood. Only the schema is read — row data is never touched.
 - Schema diff: what changed since the last migration, in the dashboard's
   Changes panel and via `manage.py joist_diff`.
 - Schema doctor: `manage.py joist_doctor` reviews the structure for problems

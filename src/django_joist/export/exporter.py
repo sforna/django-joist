@@ -3,7 +3,7 @@
 Splitting "select the tables" from "render them" lets the caller (the command,
 the HTTP route) detect an empty result and choose its own exit code before
 anything is rendered. Determinism lives here, once, so every format inherits
-it and no generator ever has to sort. Structure only, never row data.
+it and no generator ever has to sort. Schema only; row data is never read.
 """
 
 from __future__ import annotations

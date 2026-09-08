@@ -1,6 +1,6 @@
 """django-joist: a live database structure viewer for Django.
 
-Structure only, never data: Joist introspects the live schema (tables,
+Reads schema only: Joist introspects the live schema (tables,
 columns, keys, indexes, foreign keys, comments) and renders it as a zoomable
 ER diagram, exports, a structural diff and a deterministic schema review.
 Row contents are never queried or exposed.
