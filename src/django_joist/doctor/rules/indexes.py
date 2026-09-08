@@ -10,6 +10,20 @@ from ..finding import Finding
 from .base import Rule
 
 
+def _is_pattern_ops(index: dict) -> bool:
+    """Whether an index is a Django ``varchar/text_pattern_ops`` index.
+
+    Django names these ``<column>_<hash>_like`` (Postgres only). They carry a
+    different operator class than the default btree, so they are neither
+    duplicates nor prefix-redundant with a default index over the same
+    columns.
+    """
+    # ponytail: name-suffix heuristic; a hand-made pattern_ops index with a
+    # different name is misread as a plain btree. Capture the index
+    # definition (pg_get_indexdef) if that ever matters.
+    return str(index.get("name", "")).endswith("_like")
+
+
 class ForeignKeyWithoutIndex(Rule):
     """JOIST-IDX-001: a foreign key column with no index leading with it, so
     every join and cascade on it scans the table.
@@ -82,9 +96,9 @@ class DuplicateIndex(Rule):
 
     def check(self, snapshot: dict, connection: str) -> Iterable[Finding]:
         for table in snapshot.get("tables", []):
-            seen: dict[str, str] = {}
+            seen: dict[tuple[bool, str], str] = {}
             for index in table.get("indexes", []):
-                key = ",".join(index.get("columns") or [])
+                key = (_is_pattern_ops(index), ",".join(index.get("columns") or []))
                 if key in seen:
                     columns = ", ".join(index.get("columns") or [])
                     yield Finding(
@@ -151,6 +165,8 @@ class RedundantPrefixIndex(Rule):
         for other in indexes:
             if other.get("name") == index.get("name"):
                 continue
+            if _is_pattern_ops(other) != _is_pattern_ops(index):
+                continue
             other_columns = other.get("columns") or []
             if len(other_columns) > count and other_columns[:count] == columns:
                 return other
@@ -173,6 +189,8 @@ class IndexDuplicatingPrimaryKey(Rule):
             if not primary_key:
                 continue
             for index in table.get("indexes", []):
+                if _is_pattern_ops(index):
+                    continue
                 if (index.get("columns") or []) != primary_key:
                     continue
                 columns = ", ".join(primary_key)

@@ -296,6 +296,16 @@ def test_duplicate_index():
     assert check(DuplicateIndex(), snap([t2])) == []
 
 
+def test_duplicate_index_ignores_pattern_ops():
+    # a varchar_pattern_ops index (_like) has a different operator class than
+    # the default btree over the same column: not a duplicate.
+    t = table("x", indexes=[idx("name_key", ["name"], unique=True), idx("name_abc123_like", ["name"])])
+    assert check(DuplicateIndex(), snap([t])) == []
+    # two _like indexes over the same column are duplicates
+    t2 = table("x", indexes=[idx("a_1_like", ["name"]), idx("a_2_like", ["name"])])
+    assert [f.column for f in check(DuplicateIndex(), snap([t2]))] == ["a_2_like"]
+
+
 def test_redundant_prefix_index():
     t = table("x", indexes=[idx("short", ["a"]), idx("long", ["a", "b"])])
     assert [f.column for f in check(RedundantPrefixIndex(), snap([t]))] == ["short"]
@@ -304,10 +314,20 @@ def test_redundant_prefix_index():
     assert check(RedundantPrefixIndex(), snap([t2])) == []
 
 
+def test_redundant_prefix_index_ignores_pattern_ops():
+    # a _like index on the leading column is not served by a composite index
+    # with the default operator class.
+    t = table("x", indexes=[idx("a_1_like", ["a"]), idx("long", ["a", "b"])])
+    assert check(RedundantPrefixIndex(), snap([t])) == []
+
+
 def test_index_duplicating_primary_key():
     t = table("x", pk=["id", "tenant_id"], indexes=[idx("dup", ["id", "tenant_id"])])
     findings = check(IndexDuplicatingPrimaryKey(), snap([t]))
     assert len(findings) == 1 and findings[0].code == "JOIST-IDX-004"
+    # a _like index on the primary key serves pattern lookups, not a duplicate
+    t2 = table("x", pk=["id"], indexes=[idx("id_1_like", ["id"])])
+    assert check(IndexDuplicatingPrimaryKey(), snap([t2])) == []
 
 
 def test_unindexed_soft_delete(settings_overrides):
