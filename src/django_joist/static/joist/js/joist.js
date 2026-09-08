@@ -1119,7 +1119,7 @@ function renderBanners() {
   if (state.diffUnavailable) {
     el.banners.append(banner('warn',
       'Changes is unavailable: the schema-diff baseline could not be read from disk. '
-      + 'Point JOIST['diff']['dir'] at a writable directory, or turn the feature off with JOIST['diff']['enabled'] = False. '
+      + "Point JOIST['diff']['dir'] at a writable directory, or turn the feature off with JOIST['diff']['enabled'] = False. "
       + 'The diagram is unaffected.'));
   }
   const unscoped = !state.search && !state.focusRoot;
