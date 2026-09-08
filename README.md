@@ -70,7 +70,10 @@ urlpatterns = [
 
 Requires Python 3.10+ and Django 4.2+. No migrations, no models, no
 `collectstatic` needed (assets are served by the package, gated with the
-rest of the dashboard).
+rest of the dashboard). The dashboard HTML is a template shipped inside the
+app, so your `TEMPLATES` must keep `"APP_DIRS": True` for `django_joist`
+(the default in `django-admin startproject`); if you disabled it, add the
+package's template directory to `DIRS`.
 
 ## Quick start
 
