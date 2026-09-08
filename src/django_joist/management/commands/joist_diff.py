@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from django.core.management.base import BaseCommand
+from django_joist.cli import JoistCommand
 
 from django_joist.conf import joist_settings
 
 
-class Command(BaseCommand):
+class Command(JoistCommand):
     help = (
         "Show what changed in the database structure since the last migration "
         "(structure only, safe in CI)."

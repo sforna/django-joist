@@ -7,14 +7,14 @@ no row data, no network call.
 
 from __future__ import annotations
 
-from django.core.management.base import BaseCommand
+from django_joist.cli import JoistCommand
 
 VALID_FORMATS = ("console", "json")
 VALID_PRESETS = ("recommended", "strict", "none")
 VALID_FAIL_ON = ("error", "warning", "info", "never")
 
 
-class Command(BaseCommand):
+class Command(JoistCommand):
     help = (
         "Review the database structure for problems visible from structure "
         "alone (missing primary keys, unindexed foreign keys, risky types). "

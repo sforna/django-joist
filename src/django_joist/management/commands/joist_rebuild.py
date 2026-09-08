@@ -8,12 +8,12 @@ hide the one problem the user ran it to fix, so a failed store exits non-zero.
 
 from __future__ import annotations
 
-from django.core.management.base import BaseCommand
+from django_joist.cli import JoistCommand
 
 from django_joist.cache import schema_cache
 
 
-class Command(BaseCommand):
+class Command(JoistCommand):
     help = "Rebuild the cached Joist schema snapshot."
 
     def add_arguments(self, parser):

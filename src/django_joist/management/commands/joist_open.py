@@ -12,13 +12,13 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from django.core.management.base import BaseCommand
+from django_joist.cli import JoistCommand
 from django.urls import NoReverseMatch, reverse
 
 from django_joist.conf import joist_settings
 
 
-class Command(BaseCommand):
+class Command(JoistCommand):
     help = "Open the Joist dashboard in your browser."
 
     def handle(self, *args, **options):

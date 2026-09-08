@@ -5,13 +5,13 @@ the diagram does."""
 
 from __future__ import annotations
 
-from django.core.management.base import BaseCommand
+from django_joist.cli import JoistCommand
 
 from django_joist.cache import schema_cache
 from django_joist.selection import without_excluded_tables
 
 
-class Command(BaseCommand):
+class Command(JoistCommand):
     help = "Print the database structure as a table (structure only)."
 
     def add_arguments(self, parser):

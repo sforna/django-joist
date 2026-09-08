@@ -17,12 +17,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
+
+from django_joist.cli import JoistCommand
 
 from django_joist.conf import joist_settings
 
 
-class Command(BaseCommand):
+class Command(JoistCommand):
     help = "Export the database structure for CI and tooling (structure only)."
 
     def add_arguments(self, parser):
