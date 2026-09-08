@@ -8,28 +8,18 @@
     {# Joist beam mark as an inline SVG favicon; themes with the browser chrome. #}
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cstyle%3E*%7Bstroke:%2312356b;fill:none;stroke-width:1.7%7D@media(prefers-color-scheme:dark)%7B*%7Bstroke:%235fd0e6%7D%7D%3C/style%3E%3Cpath d='M4 10 H28 M4 16 H28 M4 22 H28'/%3E%3Cpath d='M9 10 V22 M16 10 V22 M23 10 V22' stroke-width:1.3/%3E%3C/svg%3E">
 
-    {# The diagram's label boxes are sized to the text Mermaid measures, with
-       no slack, so a face arriving after that measurement repaints wider
-       glyphs into boxes sized for the fallback and clips the last character.
-       The client waits for this face before measuring; the hint starts the
-       fetch with the document instead of when the stylesheet is parsed, so
-       that wait is usually over before it begins. crossorigin is required
-       even same-origin, or the preload is not reused. #}
+    {# The diagram's label boxes are sized to the text Mermaid measures, with no slack, so a face arriving after that measurement repaints wider glyphs into boxes sized for the fallback and clips the last character. The client waits for this face before measuring; the hint starts the fetch with the document instead of when the stylesheet is parsed, so that wait is usually over before it begins. crossorigin is required even same-origin, or the preload is not reused. #}
     <link rel="preload" as="font" type="font/woff2"
           href="{% url 'joist:asset' 'ibm-plex-mono-400.woff2' %}" crossorigin>
 
     <link rel="stylesheet" href="{% url 'joist:asset' 'joist.css' %}">
 
-    {# Optional custom-theme overrides, generated from JOIST["theme"]. Linked
-       after the base sheet so its variables win, and only when a theme is
-       configured (a default install makes no extra request). Same-origin,
-       CSP-safe. #}
+    {# Optional custom-theme overrides, generated from JOIST["theme"]. Linked after the base sheet so its variables win, and only when a theme is configured (a default install makes no extra request). Same-origin, CSP-safe. #}
     {% if has_custom_theme %}
         <link rel="stylesheet" href="{% url 'joist:theme' %}">
     {% endif %}
 
-    {# Mermaid as a global (UMD). Self-hosted from the package by default (no
-       CDN); JOIST["diagram"]["mermaid_url"] opts into a CDN. #}
+    {# Mermaid as a global (UMD). Self-hosted from the package by default (no CDN); JOIST["diagram"]["mermaid_url"] opts into a CDN. #}
     <script src="{{ mermaid_url }}"></script>
 </head>
 <body>
@@ -59,10 +49,7 @@
             </label>
 
             <div class="joist-secondary" id="joist-more">
-                {# Focus is a combobox rather than a select so it can be searched
-                   by substring on a large schema. Keyboard and screen-reader
-                   behaviour is implemented in focus-combobox.js to the ARIA
-                   combobox-with-listbox pattern. #}
+                {# Focus is a combobox rather than a select so it can be searched by substring on a large schema. Keyboard and screen-reader behaviour is implemented in focus-combobox.js to the ARIA combobox-with-listbox pattern. #}
                 <div class="joist-field joist-combo">
                     <label class="joist-field-label" for="joist-focus">Focus</label>
                     <input id="joist-focus" type="text" role="combobox" autocomplete="off"
@@ -116,9 +103,7 @@
 
             <div class="joist-zoom" id="joist-zoom">
                 <button type="button" data-fit title="Fit the whole diagram in view">Fit</button>
-                {# A title attribute is a tooltip, not a name: assistive technology
-                   is not required to expose it, so the slider needs a real label
-                   (WCAG 4.1.2). aria-label keeps the control visually unchanged. #}
+                {# A title attribute is a tooltip, not a name: assistive technology is not required to expose it, so the slider needs a real label (WCAG 4.1.2). aria-label keeps the control visually unchanged. #}
                 <input id="joist-zoom-range" type="range" min="0.1" max="3" step="0.02" value="1"
                        aria-label="Zoom" title="Zoom (scroll or pinch over the diagram)">
                 <span id="joist-zoom-pct">100%</span>
