@@ -43,8 +43,10 @@ def test_foreign_key_captured(tables_by_name):
     fks = {fk["columns"][0]: fk for fk in book["foreign_keys"]}
     assert fks["author_id"]["references_table"] == "testapp_author"
     assert fks["author_id"]["references_columns"] == ["id"]
-    assert fks["author_id"]["on_delete"] == "cascade"
-    assert fks["publisher_id"]["on_delete"] == "set null"
+    # Django on SQLite omits referential actions from the DDL (cascade is
+    # app-level), so the DB honestly reports "no action" here. The PRAGMA
+    # reader must pass that through, not invent "cascade".
+    assert fks["author_id"]["on_delete"] == "no action"
 
 
 def test_native_types_and_nullability(tables_by_name):

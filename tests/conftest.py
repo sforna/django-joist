@@ -19,7 +19,7 @@ def _clean_state():
 
 
 @pytest.fixture()
-def snapshot(django_db):
+def snapshot(db):
     """Fresh (uncached) snapshot for the default alias, as a dict."""
     return schema_cache().rebuild("default")
 
@@ -39,19 +39,36 @@ def settings_overrides():
         _set(joist_settings.wrapped, path, value)
 
     yield override
-    for path, original in reversed(applied):
-        _set(joist_settings.wrapped, path, original)
+    for path, (existed, original) in reversed(applied):
+        if existed:
+            _set(joist_settings.wrapped, path, original)
+        else:
+            _del(joist_settings.wrapped, path)
 
 
 def _get(node, path):
-    for part in path.split("."):
-        node = node[part]
-    return node
+    """Return (existed, value) for a dotted path."""
+    cur: object = node
+    parts = path.split(".")
+    for part in parts:
+        if not isinstance(cur, dict) or part not in cur:
+            return (False, None)
+        cur = cur[part]
+    return (True, cur)
 
 
 def _set(node, path, value):
     parts = path.split(".")
     for part in parts[:-1]:
-        node = node.setdefault(part, {}) if isinstance(node, dict) else node
-        node = node[part]
+        node = node.setdefault(part, {})
     node[parts[-1]] = value
+
+
+def _del(node, path):
+    parts = path.split(".")
+    for part in parts[:-1]:
+        node = node.get(part)
+        if not isinstance(node, dict):
+            return
+    if isinstance(node, dict):
+        node.pop(parts[-1], None)
