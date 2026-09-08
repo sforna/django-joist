@@ -162,3 +162,60 @@ def test_asset_known_but_missing_is_404(client, enabled, tmp_path, settings, mon
 # -- export route ---------------------------------------------------------
 def test_export_unknown_format_404(client, enabled):
     assert client.get(reverse("joist:export", args=["exe"])).status_code == 404
+
+
+# -- layer integration (doctor payload + export route) ----------------------
+def test_schema_api_carries_doctor_payload(client, enabled, settings_overrides):
+    settings_overrides("doctor.dashboard", True)
+    settings_overrides("doctor.preset", "strict")
+    payload = json.loads(client.get(reverse("joist:api_schema")).content)
+    doctor = payload["doctor"]
+    assert doctor is not None
+    assert set(doctor["summary"]) == {"total", "error", "warning", "info"}
+    assert doctor["summary"]["total"] == len(doctor["findings"]) >= 1
+    codes = {f["code"] for f in doctor["findings"]}
+    assert any(c.startswith("JOIST-") for c in codes)
+    # Money-as-float bait in the test app (Publisher.balance) must surface.
+    assert any(f["table"] == "testapp_publisher" and f["column"] == "balance" for f in doctor["findings"])
+    # Excluded tables never reach a finding.
+    settings_overrides("excluded_tables", ["testapp_publisher", "testapp_tag", "testapp_label", "testapp_legacyrow"])
+    payload = json.loads(client.get(reverse("joist:api_schema")).content)
+    assert all(f["table"] != "testapp_publisher" for f in payload["doctor"]["findings"])
+
+
+def test_export_route_matches_builder_bytes(client, enabled):
+    from django_joist.export.builder import ExportBuilder
+
+    expected = ExportBuilder().only(["testapp_book"]).to_dbml()
+    response = client.get(reverse("joist:export", args=["dbml"]), {"only": "testapp_book"})
+    assert response.status_code == 200
+    assert response["Content-Type"].startswith("text/plain")
+    assert response.content.decode() == expected
+
+
+def test_export_route_focus_and_compact(client, enabled):
+    response = client.get(
+        reverse("joist:export", args=["llm"]),
+        {"focus": "testapp_book", "depth": 1, "compact": "1"},
+    )
+    assert response.status_code == 200
+    body = response.content.decode()
+    # Defined tables = non-indented, non-comment header lines. 1-hop
+    # undirected neighbourhood of book: author + publisher (outgoing FKs)
+    # and booktag (incoming). tag appears only as a referenced table inside
+    # booktag's FK lines (an edge, not a table) - two hops away.
+    defined = {
+        line.strip()
+        for line in body.splitlines()
+        if line.strip() and not line.startswith((" ", "#")) and " " not in line.strip() and "->" not in line
+    }
+    assert defined == {"testapp_book", "testapp_author", "testapp_publisher", "testapp_booktag"}
+    assert "testapp_legacyrow" not in body
+    # compact: column defaults must be gone
+    assert "default" not in body.lower()
+
+
+def test_export_route_bad_input_404(client, enabled):
+    assert client.get(reverse("joist:export", args=["dbml"]), {"connection": "nope"}).status_code == 404
+    assert client.get(reverse("joist:export", args=["dbml"]), {"focus": "ghost"}).status_code == 404
+    assert client.get(reverse("joist:export", args=["dbml"]), {"only": "testapp_tag_and_nope"}).status_code == 404

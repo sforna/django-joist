@@ -1,19 +1,35 @@
-{% load i18n %}<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>django-joist: Database Structure</title>
 
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cstyle%3E*%7Bstroke:%2312356b;fill:none;stroke-width:1.7%7D@media(prefers-color-scheme:dark)%7B*%7Bstroke:%235fd0e6%7D%7D%3C/style%3E%3Cpath d='M4 8 H28 M4 12 H28 M8 12 V26 M24 12 V26 M8 26 H24'/%3E%3C/svg%3E">
+    {# Joist beam mark as an inline SVG favicon; themes with the browser chrome. #}
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cstyle%3E*%7Bstroke:%2312356b;fill:none;stroke-width:1.7%7D@media(prefers-color-scheme:dark)%7B*%7Bstroke:%235fd0e6%7D%7D%3C/style%3E%3Cpath d='M4 10 H28 M4 16 H28 M4 22 H28'/%3E%3Cpath d='M9 10 V22 M16 10 V22 M23 10 V22' stroke-width:1.3/%3E%3C/svg%3E">
 
+    {# The diagram's label boxes are sized to the text Mermaid measures, with
+       no slack, so a face arriving after that measurement repaints wider
+       glyphs into boxes sized for the fallback and clips the last character.
+       The client waits for this face before measuring; the hint starts the
+       fetch with the document instead of when the stylesheet is parsed, so
+       that wait is usually over before it begins. crossorigin is required
+       even same-origin, or the preload is not reused. #}
     <link rel="preload" as="font" type="font/woff2"
           href="{% url 'joist:asset' 'ibm-plex-mono-400.woff2' %}" crossorigin>
+
     <link rel="stylesheet" href="{% url 'joist:asset' 'joist.css' %}">
+
+    {# Optional custom-theme overrides, generated from JOIST["theme"]. Linked
+       after the base sheet so its variables win, and only when a theme is
+       configured (a default install makes no extra request). Same-origin,
+       CSP-safe. #}
     {% if has_custom_theme %}
-    <link rel="stylesheet" href="{% url 'joist:theme' %}">
+        <link rel="stylesheet" href="{% url 'joist:theme' %}">
     {% endif %}
 
+    {# Mermaid as a global (UMD). Self-hosted from the package by default (no
+       CDN); JOIST["diagram"]["mermaid_url"] opts into a CDN. #}
     <script src="{{ mermaid_url }}"></script>
 </head>
 <body>
@@ -29,14 +45,122 @@
         data-doctor-flag-tables="{% if doctor_flag_tables %}1{% else %}0{% endif %}"
     >
         <div class="joist-toolbar">
-            <span class="joist-brand">joist</span>
+            <span class="joist-brand">
+                <svg class="joist-mark" width="20" height="20" viewBox="0 0 32 32" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path d="M4 10 H28 M4 16 H28 M4 22 H28" stroke-width="1.7"/>
+                    <path d="M9 10 V22 M16 10 V22 M23 10 V22" stroke-width="1.3"/>
+                </svg>
+                joist
+            </span>
+
+            <label class="joist-field joist-field--search">
+                <span class="joist-field-label">Filter</span>
+                <input id="joist-search" type="search" placeholder="table name…" autocomplete="off">
+            </label>
+
+            <div class="joist-secondary" id="joist-more">
+                {# Focus is a combobox rather than a select so it can be searched
+                   by substring on a large schema. Keyboard and screen-reader
+                   behaviour is implemented in focus-combobox.js to the ARIA
+                   combobox-with-listbox pattern. #}
+                <div class="joist-field joist-combo">
+                    <label class="joist-field-label" for="joist-focus">Focus</label>
+                    <input id="joist-focus" type="text" role="combobox" autocomplete="off"
+                           aria-expanded="false" aria-controls="joist-focus-list"
+                           aria-autocomplete="list" placeholder="none">
+                    <ul class="joist-combo-list" id="joist-focus-list" role="listbox"
+                        aria-label="Tables" hidden></ul>
+                    <span class="joist-sr-only" id="joist-focus-status" role="status" aria-live="polite"></span>
+                </div>
+                <label class="joist-field">
+                    <span class="joist-field-label">Depth</span>
+                    <input id="joist-depth" type="number" min="0" step="1">
+                </label>
+                <label class="joist-field joist-field--check">
+                    <input id="joist-labels" type="checkbox"> <span class="joist-field-label">Django types</span>
+                </label>
+            </div>
+
+            <div class="joist-utils">
+                <label class="joist-field joist-field--conn" hidden>
+                    <span class="joist-field-label">Connections</span>
+                    <select id="joist-connection"></select>
+                </label>
+                <button type="button" class="joist-util joist-util--more" id="joist-more-btn" title="More controls" aria-expanded="false">⋯</button>
+                <button type="button" class="joist-util" id="joist-export-btn" title="Export the diagram (PNG or SVG)" aria-expanded="false">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M12 3 v11"/><path d="M7 9 l5 5 5-5"/><path d="M4 20 h16"/>
+                    </svg>
+                </button>
+                <button type="button" class="joist-util" id="joist-diff-btn" title="What changed since the last migration" aria-expanded="false" hidden>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M5 8 h8 M9 4 v8"/><path d="M11 17 h8"/>
+                    </svg>
+                </button>
+                <button type="button" class="joist-util" id="joist-health-btn" title="Structure health (joist_doctor findings)" aria-expanded="false" hidden>
+                    <svg class="joist-health-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                        <path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/>
+                    </svg>
+                    <span class="joist-health-count" id="joist-health-count" aria-hidden="true" hidden></span>
+                </button>
+                <button type="button" class="joist-util" id="joist-legend-btn" title="Legend" aria-expanded="false">▤</button>
+                <button type="button" class="joist-util" id="joist-theme-btn" title="Theme">◐</button>
+            </div>
         </div>
+
+        <div id="joist-banners"></div>
+
         <main id="joist-viewport">
             <div id="joist-canvas"></div>
+
+            <div class="joist-zoom" id="joist-zoom">
+                <button type="button" data-fit title="Fit the whole diagram in view">Fit</button>
+                {# A title attribute is a tooltip, not a name: assistive technology
+                   is not required to expose it, so the slider needs a real label
+                   (WCAG 4.1.2). aria-label keeps the control visually unchanged. #}
+                <input id="joist-zoom-range" type="range" min="0.1" max="3" step="0.02" value="1"
+                       aria-label="Zoom" title="Zoom (scroll or pinch over the diagram)">
+                <span id="joist-zoom-pct">100%</span>
+            </div>
         </main>
-        <noscript>django-joist needs JavaScript to render the diagram. The
-            structure is also available via the JSON endpoint and the
-            <code>joist_export</code> management command.</noscript>
+
+        <div class="joist-legend" id="joist-legend" hidden>
+            <div class="joist-legend-head">Legend</div>
+            <dl class="joist-legend-list">
+                <dt>PK</dt><dd>Primary key</dd>
+                <dt>FK</dt><dd>Foreign key</dd>
+                <dt aria-hidden="true">
+                    <svg width="42" height="12" viewBox="0 0 42 12" fill="none" stroke="currentColor" stroke-width="1.3">
+                        <path d="M2 2 V10 M5 2 V10"/><path d="M5 6 H30"/>
+                        <path d="M30 6 L38 2 M30 6 L38 10 M30 6 H38"/><circle cx="35" cy="6" r="2.4"/>
+                    </svg>
+                </dt><dd>One → many</dd>
+            </dl>
+        </div>
+
+        <div class="joist-diff-panel" id="joist-diff-panel" hidden>
+            <div class="joist-diff-head">Changes since last migration</div>
+            <div class="joist-diff-body"></div>
+        </div>
+
+        <div class="joist-health-panel" id="joist-health-panel" hidden>
+            <div class="joist-health-head">
+                <span>Structure health</span>
+                <button type="button" class="joist-health-max" id="joist-health-max-btn" title="Maximize" aria-label="Maximize" aria-pressed="false">⤢</button>
+            </div>
+            <div class="joist-health-body"></div>
+        </div>
+
+        <div class="joist-popover" id="joist-popover" hidden></div>
+
+        <footer class="joist-footer">
+            <span id="joist-stat-tables">&nbsp;</span>
+            <span id="joist-stat-conn"></span>
+            <span class="joist-flag" id="joist-stat-fallback" hidden>SQLite&nbsp;fallback</span>
+            <span class="joist-footer-spacer"></span>
+            <span id="joist-stat-updated"></span>
+        </footer>
     </div>
 
     <script type="module" src="{% url 'joist:asset' 'joist.js' %}"></script>
