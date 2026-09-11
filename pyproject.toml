@@ -9,7 +9,7 @@ description = "A live database structure viewer for Django. Renders your schema 
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.13"
-authors = [{ name = "S. Fornasiere", email = "s.fornasiere@gmail.com" }]
+authors = [{ name = "Simone Fornasiere", email = "s.fornasiere@gmail.com" }]
 keywords = [
     "django",
     "database",
