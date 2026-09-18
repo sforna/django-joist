@@ -1,7 +1,30 @@
+# Byte-compiled / build artifacts
 __pycache__/
-*.pyc
+*.py[cod]
 *.egg-info/
-dist/
+.eggs/
 build/
-/var/
+dist/
+
+# Environments
+.venv/
+venv/
+
+# Tooling caches
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+.coverage
+coverage.xml
+htmlcov/
+
+# django-joist runtime output
+/var/
+/.joist-var/
+
+# Local config / OS noise / editor
+.env
+.DS_Store
+.idea/
+.vscode/
