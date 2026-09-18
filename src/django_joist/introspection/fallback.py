@@ -129,7 +129,11 @@ def _replay_per_migration(connection, alias: str) -> list[str]:
     for migration, _backwards in plan:
         target = [(migration.app_label, migration.name)]
         try:
-            executor.migrate(target)
+            # One executor per target on purpose: its loader snapshots the
+            # applied migrations, so a reused one plans the next target from
+            # stale state and re-applies what already ran - which is every
+            # migration after the first failure, each misfiled as "skipped".
+            MigrationExecutor(connection).migrate(target)
         except Exception as exc:  # noqa: BLE001 - graceful per migration
             logger.debug("joist: fallback replay skipped %s.%s: %s", migration.app_label, migration.name, exc)
             skipped.append(f"{migration.app_label}.{migration.name}")
