@@ -2,11 +2,16 @@
   "name": "django-joist",
   "private": true,
   "type": "module",
-  "description": "Client-side diagram logic for django-joist. No build step: the assets ship as native ES modules, and the tests run on Node's built-in runner with no dependencies.",
+  "description": "Client-side diagram logic for django-joist, and its tests. No build step: the assets ship as native ES modules, the logic runs on Node's built-in test runner, and the browser lane drives the real Django app in Chromium.",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test \"tests/js/**/*.test.js\""
+    "test": "node --test \"tests/js/**/*.test.js\"",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0"
   }
 }

@@ -23,9 +23,14 @@ htmlcov/
 /var/
 /.joist-var/
 
-# Node (client-side tests; there are no dependencies to install)
+# Node (client-side tests; the lockfile is committed: the browser lane
+# installs from it with `npm ci`)
 node_modules/
-package-lock.json
+
+# Playwright
+/test-results/
+/playwright-report/
+/tests/browser/.state/
 
 # Local config / OS noise / editor
 .env

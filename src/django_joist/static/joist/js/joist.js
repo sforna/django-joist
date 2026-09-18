@@ -302,6 +302,9 @@ let menuTable = null;
 // detail popover can sit alongside the open Health panel.
 function placePopover(anchor) {
   el.popover.hidden = false;
+  // The heading is already in place: naming the dialog from it keeps the
+  // accessible name honest as the popover's content changes.
+  el.popover.setAttribute('aria-label', el.popover.querySelector('.joist-popover-head')?.textContent ?? 'Details');
   const r = anchor.getBoundingClientRect();
   const w = el.popover.offsetWidth;
   const h = el.popover.offsetHeight;
@@ -322,6 +325,9 @@ function positionPopover(anchor) {
 function positionCluster(anchor) {
   closeOverlays('popover');
   el.popover.hidden = false;
+  // The heading is already in place: naming the dialog from it keeps the
+  // accessible name honest as the popover's content changes.
+  el.popover.setAttribute('aria-label', el.popover.querySelector('.joist-popover-head')?.textContent ?? 'Details');
   const host = app.getBoundingClientRect();
   const w = el.popover.offsetWidth;
   el.popover.style.left = `${host.right - w - 14}px`;

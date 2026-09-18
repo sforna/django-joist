@@ -205,13 +205,20 @@ JOIST_TEST_ENGINE=postgres JOIST_TEST_USER=joist JOIST_TEST_PASSWORD=password py
 server-only assertions when the lane is SQLite, and its canary fails the run if
 the snapshot fell back to SQLite instead of reading the server.
 
-The client-side logic has its own suite, on Node's built-in test runner: no
-dependencies to install and no build step, because the assets ship as native ES
-modules.
+The client-side logic has its own suite on Node's built-in test runner (no build
+step: the assets ship as native ES modules), and the browser lane drives the real
+app in Chromium.
 
 ```bash
-npm test
+npm install
+npm test                        # the client-side logic and the stylesheet invariants
+npx playwright install chromium # once
+JOIST_PYTHON=.venv/bin/python npm run test:e2e
 ```
+
+`npm run test:e2e` starts the test project itself (`tests/browser/serve.py`) on a
+throwaway SQLite file, so it needs the interpreter that has Django and this
+package installed: `JOIST_PYTHON` points at it, defaulting to `python`.
 
 ## License
 

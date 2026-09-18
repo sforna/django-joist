@@ -106,3 +106,21 @@ jobs:
         with:
           node-version: "22"
       - run: npm test
+
+  # The browser lane: the real app served by Django, driven by Chromium, so it
+  # needs both toolchains - Python for the server, Node for the runner.
+  browser:
+    runs-on: ubuntu-latest
+    name: Browser - Python 3.13 - Django 6.1 - Chromium
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install "Django~=6.1.0" -e .
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

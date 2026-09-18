@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+// The accessibility invariants that a browser scan cannot check: the scan runs
+// the WCAG rules over the rendered page, while these read the source of truth
+// (the stylesheet and the template) and hold the markup structure that makes the
+// page navigable.
+//
 // WCAG 2.4.7 (Focus Visible). The three in-diagram triggers are given
 // role="button" and tabindex="0" by joist.js, so they are reachable by Tab:
 // without a visible indicator they are reachable and invisible, which is worse
@@ -51,4 +56,44 @@ test('the canvas keeps its pointer affordance on the clickable labels', () => {
   // swallow clicks.
   const blocks = blocksMatching('.joist-table-name');
   assert.ok(blocks.some((block) => /cursor\s*:\s*pointer/.test(block)));
+});
+
+
+// -- markup structure ---------------------------------------------------------
+// Read as text: the template only needs to be checked for the landmarks and the
+// live region, and rendering it here would mean booting Django for a string.
+const template = readFileSync(
+  fileURLToPath(new URL('../../src/django_joist/templates/joist/index.html', import.meta.url)),
+  'utf8',
+);
+
+test('the toolbar is the page banner landmark', () => {
+  // The controls were a plain div, so nothing could jump to them: a landmark
+  // gives the toolbar a name in the screen reader's landmark list.
+  assert.match(template, /<header class="joist-toolbar">/);
+  assert.match(template, /<\/header>/);
+});
+
+test('the overlays are named landmarks', () => {
+  for (const [id, label] of [
+    ['joist-legend', 'Legend'],
+    ['joist-diff-panel', 'Changes since last migration'],
+    ['joist-health-panel', 'Structure health'],
+  ]) {
+    const pattern = new RegExp(`<aside[^>]*id="${id}"[^>]*aria-label="${label}"`);
+    assert.match(template, pattern, `${id} is not a named landmark`);
+  }
+});
+
+test('the notice area is a polite live region', () => {
+  // Banners say things like "the cache store is unavailable" and "no tables
+  // match": injected into a plain div, a status message reaches nobody who is
+  // not looking at that part of the screen (WCAG 4.1.3).
+  assert.match(template, /id="joist-banners" role="status" aria-live="polite"/);
+});
+
+test('the shared popover is a named dialog', () => {
+  // It holds four different menus (table actions, a column list, an enum list,
+  // the export menu) and the client relabels it from the heading it renders.
+  assert.match(template, /id="joist-popover" role="dialog" aria-label="[^"]+"/);
 });
