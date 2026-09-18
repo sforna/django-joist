@@ -1,5 +1,14 @@
 # django-joist
 
+<p align="center">
+  <a href="https://pypi.org/project/django-joist/"><img alt="Latest version on PyPI" src="https://img.shields.io/pypi/v/django-joist.svg?style=flat"></a>
+  <a href="https://pypi.org/project/django-joist/"><img alt="Downloads" src="https://img.shields.io/pypi/dm/django-joist.svg?style=flat"></a>
+  <a href="https://github.com/sforna/django-joist/actions/workflows/tests.yml"><img alt="Tests" src="https://img.shields.io/github/actions/workflow/status/sforna/django-joist/tests.yml?branch=main&amp;label=tests&amp;style=flat"></a>
+  <a href="https://pypi.org/project/django-joist/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/django-joist.svg?style=flat"></a>
+  <a href="https://pypi.org/project/django-joist/"><img alt="Django 5.2+" src="https://img.shields.io/badge/Django-5.2%2B-0C4B33?style=flat&amp;logo=django&amp;logoColor=white"></a>
+  <a href="LICENSE"><img alt="License: MIT AND OFL-1.1" src="https://img.shields.io/pypi/l/django-joist.svg?style=flat"></a>
+</p>
+
 **A live database structure viewer for Django.** Joist introspects your live
 schema and renders it as a scrollable, zoomable ER diagram right inside your
 app, so you can see how tables actually connect without opening a DB client.
