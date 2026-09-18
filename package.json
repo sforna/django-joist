@@ -1,0 +1,12 @@
+{
+  "name": "django-joist",
+  "private": true,
+  "type": "module",
+  "description": "Client-side diagram logic for django-joist. No build step: the assets ship as native ES modules, and the tests run on Node's built-in runner with no dependencies.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"tests/js/**/*.test.js\""
+  }
+}

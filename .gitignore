@@ -23,6 +23,10 @@ htmlcov/
 /var/
 /.joist-var/
 
+# Node (client-side tests; there are no dependencies to install)
+node_modules/
+package-lock.json
+
 # Local config / OS noise / editor
 .env
 .DS_Store

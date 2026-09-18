@@ -205,6 +205,14 @@ JOIST_TEST_ENGINE=postgres JOIST_TEST_USER=joist JOIST_TEST_PASSWORD=password py
 server-only assertions when the lane is SQLite, and its canary fails the run if
 the snapshot fell back to SQLite instead of reading the server.
 
+The client-side logic has its own suite, on Node's built-in test runner: no
+dependencies to install and no build step, because the assets ship as native ES
+modules.
+
+```bash
+npm test
+```
+
 ## License
 
 MIT. See [LICENSE](LICENSE) (includes the attribution to Laravel Truss).

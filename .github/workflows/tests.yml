@@ -92,3 +92,17 @@ jobs:
           JOIST_TEST_PORT: "3306"
           JOIST_TEST_USER: root
           JOIST_TEST_PASSWORD: password
+
+  # The client-side logic (selection, pan/zoom maths, diagram definition, the
+  # render models) and the stylesheet invariants the port promises: contrast,
+  # focus visibility, label casing. Node's built-in runner, so there is nothing
+  # to install and no build step to keep working.
+  js:
+    runs-on: ubuntu-latest
+    name: JavaScript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm test
