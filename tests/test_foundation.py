@@ -1,6 +1,7 @@
 """Foundation tests: snapshot shape, serialization, cache behaviour, selection."""
 
 import pytest
+from django.db import connection
 
 from django.core.cache import caches
 
@@ -8,6 +9,30 @@ from django_joist.cache import schema_cache
 from django_joist.selection import excluded_tables_for, without_excluded_tables
 
 pytestmark = pytest.mark.django_db
+
+#: The exact native type each backend reports for the same model columns. The
+#: promise is the type the database itself reports, so every lane asserts its
+#: own spelling rather than a lowest-common-denominator one.
+NATIVE_TYPES = {
+    "sqlite": {
+        "title": "varchar(255)",
+        "price_cents": "integer unsigned",
+        "is_published": "bool",
+        "data": "TEXT",
+    },
+    "postgresql": {
+        "title": "character varying(255)",
+        "price_cents": "integer",
+        "is_published": "boolean",
+        "data": "jsonb",
+    },
+    "mysql": {
+        "title": "varchar(255)",
+        "price_cents": "int unsigned",
+        "is_published": "tinyint(1)",
+        "data": "json",
+    },
+}
 
 
 def test_snapshot_wire_shape(snapshot):
@@ -45,18 +70,20 @@ def test_foreign_key_captured(tables_by_name):
     fks = {fk["columns"][0]: fk for fk in book["foreign_keys"]}
     assert fks["author_id"]["references_table"] == "testapp_author"
     assert fks["author_id"]["references_columns"] == ["id"]
-    # Django on SQLite omits referential actions from the DDL (cascade is
-    # app-level), so the DB honestly reports "no action" here. The PRAGMA
-    # reader must pass that through, not invent "cascade".
+    # Django never writes referential actions into the DDL from a model's
+    # on_delete - that is application-level, on every backend - so the database
+    # honestly reports "no action" here. testapp_fkaction carries explicit
+    # ON DELETE/ON UPDATE clauses and is asserted in test_backends.py.
     assert fks["author_id"]["on_delete"] == "no action"
 
 
 def test_native_types_and_nullability(tables_by_name):
     cols = {c["name"]: c for c in tables_by_name["testapp_book"]["columns"]}
-    assert cols["title"]["type"] == "varchar(255)"
+    expected = NATIVE_TYPES[connection.vendor]
+    assert {name: cols[name]["type"] for name in expected} == expected
     assert cols["title"]["nullable"] is False
     assert cols["price_cents"]["nullable"] is True
-    assert cols["data"]["type"] in ("text", "TEXT")  # sqlite JSON storage
+    assert cols["data"]["nullable"] is True
 
 
 def test_composite_unique_constraint_is_an_index(tables_by_name):

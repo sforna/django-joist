@@ -228,6 +228,8 @@ def test_open_reports_an_unmounted_route(opened, monkeypatch):
 # -- joist_diff --------------------------------------------------------------
 def test_diff_prints_every_kind_of_change(baselines):
     snapshot = schema_cache().rebuild("default")
+    live_book = next(t for t in snapshot["tables"] if t["name"] == "testapp_book")
+    live_type = next(c for c in live_book["columns"] if c["name"] == "title")["type"]
     baseline = json.loads(json.dumps(snapshot))
     book = next(t for t in baseline["tables"] if t["name"] == "testapp_book")
 
@@ -255,11 +257,15 @@ def test_diff_prints_every_kind_of_change(baselines):
     book["primary_key"] = ["id", "title"]
 
     # Indexes: one changed, one added (dropped from the baseline), one removed
-    # (present only there).
+    # (present only there). The added case uses testapp_author, whose indexes are
+    # read from the live snapshot: which ones a backend derives (a unique
+    # constraint, a LIKE index, a foreign-key index) differs per vendor.
     uq = next(i for i in book["indexes"] if i["unique"])
-    author_index = next(i for i in book["indexes"] if i["columns"] == ["author_id"])
+    author = next(t for t in baseline["tables"] if t["name"] == "testapp_author")
+    live_author_indexes = next(t for t in snapshot["tables"] if t["name"] == "testapp_author")["indexes"]
+    assert live_author_indexes
     uq["unique"] = False
-    book["indexes"] = [i for i in book["indexes"] if i["name"] != author_index["name"]]
+    author["indexes"] = []
     book["indexes"].append({"name": "idx_legacy", "columns": ["title"], "unique": False})
 
     # Foreign keys: the same three cases.
@@ -288,9 +294,10 @@ def test_diff_prints_every_kind_of_change(baselines):
     assert "column added: data (" in out
     assert "column removed: legacy_flag" in out
     assert "column changed: title (" in out
-    assert "type: varchar(100) -> varchar(255)" in out
+    assert f"type: varchar(100) -> {live_type}" in out
     assert "nullable: true -> false" in out
-    assert f"index added: {author_index['name']}" in out
+    for index in live_author_indexes:
+        assert f"index added: {index['name']}" in out
     assert f"index changed: {uq['name']}" in out
     assert "index removed: idx_legacy" in out
     assert f"foreign key added: {author_fk['name']}" in out

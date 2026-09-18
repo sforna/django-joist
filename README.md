@@ -191,6 +191,20 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
+The suite runs on SQLite by default. The PostgreSQL and MySQL lanes are the
+same suite against a real server: install the driver (`psycopg[binary]` for
+PostgreSQL, `pymysql[rsa]` for MySQL — `tests/settings.py` registers it as
+`MySQLdb`) and point the run at one:
+
+```bash
+JOIST_TEST_ENGINE=postgres JOIST_TEST_USER=joist JOIST_TEST_PASSWORD=password python -m pytest
+```
+
+`JOIST_TEST_HOST`, `JOIST_TEST_PORT`, `JOIST_TEST_DB` and
+`JOIST_TEST_DB_SECONDARY` override the rest. `tests/test_backends.py` skips the
+server-only assertions when the lane is SQLite, and its canary fails the run if
+the snapshot fell back to SQLite instead of reading the server.
+
 ## License
 
 MIT. See [LICENSE](LICENSE) (includes the attribution to Laravel Truss).

@@ -27,10 +27,13 @@ def test_facade_snapshot_fluent_pipeline():
 def test_facade_builder_is_immutable_and_branchable():
     base = django_joist.snapshot().only(["testapp_book"])
     compacted = base.compact()
-    plain = base.to_dbml()
-    assert plain != compacted.to_dbml()
+    # Markdown so the difference is backend-independent: compact() clears the
+    # internal index name, which exists under the same name everywhere, while
+    # column defaults and per-column FK indexes do not.
+    plain = base.to_markdown()
+    assert plain != compacted.to_markdown()
     # branching off the same base leaves it untouched
-    assert base.to_dbml() == plain
+    assert base.to_markdown() == plain
 
 
 @pytest.mark.django_db

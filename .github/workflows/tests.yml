@@ -21,3 +21,74 @@ jobs:
       - run: pip install "Django${{ matrix.django }}" pytest pytest-django
       - run: pip install -e .
       - run: python -m pytest -q
+
+  # Real PostgreSQL and MySQL lanes. The matrix above runs SQLite, which cannot
+  # exercise the catalog readers (native types, comments, referential actions),
+  # so the whole suite runs once per server here. One Python/Django combination
+  # each keeps them cheap; the tests themselves pick their expectations from
+  # JOIST_TEST_ENGINE, and their canary asserts the snapshot did not silently
+  # fall back to SQLite.
+  test-postgres:
+    runs-on: ubuntu-latest
+    name: PostgreSQL - Python 3.13 - Django 6.1
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: joist
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: joist_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U joist -d joist_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install "Django~=6.1.0" pytest pytest-django "psycopg[binary]"
+      - run: pip install -e .
+      - run: python -m pytest -q
+        env:
+          JOIST_TEST_ENGINE: postgres
+          JOIST_TEST_HOST: 127.0.0.1
+          JOIST_TEST_PORT: "5432"
+          JOIST_TEST_USER: joist
+          JOIST_TEST_PASSWORD: password
+
+  test-mysql:
+    runs-on: ubuntu-latest
+    name: MySQL - Python 3.13 - Django 6.1
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: joist_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # PyMySQL rather than mysqlclient: same protocol, no C build, so this lane
+      # needs no system packages. tests/settings.py registers it as MySQLdb.
+      - run: pip install "Django~=6.1.0" pytest pytest-django "pymysql[rsa]"
+      - run: pip install -e .
+      - run: python -m pytest -q
+        env:
+          JOIST_TEST_ENGINE: mysql
+          JOIST_TEST_HOST: 127.0.0.1
+          JOIST_TEST_PORT: "3306"
+          JOIST_TEST_USER: root
+          JOIST_TEST_PASSWORD: password

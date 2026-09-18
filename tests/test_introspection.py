@@ -1,17 +1,27 @@
 """The introspection paths a live SQLite connection never reaches: the generic
 type composition used when a vendor has no native type string, the two
-normalizers that absorb backend shape differences, and the comment fields the
-serializer only emits on backends that have them.
+normalizers that absorb backend shape differences, the comment fields the
+serializer only emits on backends that have them, and the rule that enrichment
+is never fatal.
 
 Pure functions over plain values - no database here on purpose, so they can be
 pinned for PostgreSQL and MySQL while those lanes are still missing.
 """
 
+import logging
+
 import pytest
 from django.db import models
 
+from django_joist.introspection import native
 from django_joist.introspection.builder import SnapshotBuilder
 from django_joist.introspection.data import Column, ForeignKey, Index, Table
+from django_joist.introspection.native import (
+    native_column_comments,
+    native_column_types,
+    native_fk_actions,
+    native_table_comments,
+)
 from django_joist.introspection.serializer import SchemaSerializer
 
 
@@ -141,3 +151,52 @@ def test_serializer_omits_empty_comments(comment):
     out = SchemaSerializer().table(Table(name="books", columns=[column], comment=comment))
     assert "comment" not in out
     assert "comment" not in out["columns"][0]
+
+
+# -- enrichment is never fatal -----------------------------------------------
+class FakeConnection:
+    """Just enough connection for the vendor dispatch: alias and vendor."""
+
+    vendor = "postgresql"
+    alias = "default"
+
+
+def call(helper, connection):
+    """Call one of the four readers; only the type reader takes a description map."""
+    if helper is native_column_types:
+        return helper(connection, ["books"], {})
+    return helper(connection, ["books"])
+
+
+@pytest.mark.parametrize(
+    "helper,broken",
+    [
+        (native_column_types, "_pg_column_types"),
+        (native_column_comments, "_pg_column_comments"),
+        (native_table_comments, "_pg_table_comments"),
+        (native_fk_actions, "_pg_fk_actions"),
+    ],
+)
+def test_a_failed_catalog_query_degrades_to_no_enrichment(monkeypatch, caplog, helper, broken):
+    # The four readers are called while building every snapshot: a catalog query
+    # that fails (permissions revoked, a dropped extension, a driver quirk) must
+    # cost the enrichment, never the diagram.
+    def explode(*args, **kwargs):
+        raise RuntimeError("catalog query failed")
+
+    monkeypatch.setattr(native, broken, explode)
+    with caplog.at_level(logging.DEBUG, logger="joist"):
+        result = call(helper, FakeConnection())
+    assert result == {}
+    assert "unavailable" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "helper",
+    [native_column_types, native_column_comments, native_table_comments, native_fk_actions],
+)
+def test_an_unknown_vendor_simply_has_no_enrichment(helper):
+    class UnknownVendor(FakeConnection):
+        vendor = "oracle"
+
+    assert call(helper, UnknownVendor()) == {}
