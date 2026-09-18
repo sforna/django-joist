@@ -2,6 +2,8 @@
 
 import pytest
 
+from django.core.cache import caches
+
 from django_joist.cache import schema_cache
 from django_joist.selection import excluded_tables_for, without_excluded_tables
 
@@ -97,3 +99,36 @@ def test_per_alias_exclusions_merge(settings_overrides):
     settings_overrides("connections.default.excluded_tables", ["testapp_label"])
     assert "testapp_label" in excluded_tables_for("default")
     assert "django_migrations" in excluded_tables_for("default")  # global default kept
+
+
+def test_cache_has_and_forget(snapshot):
+    cache = schema_cache()
+    assert cache.has("default") is True
+    assert cache.forget("default") is True
+    assert cache.has("default") is False
+    assert cache.peek("default") is None
+
+
+def test_the_key_prefix_is_configurable(settings_overrides):
+    settings_overrides("cache.key_prefix", "acme-schema")
+    assert schema_cache().key("secondary") == "acme-schema:schema:secondary"
+
+
+def test_a_named_cache_backend_is_honoured(settings, settings_overrides):
+    settings.CACHES = {
+        **settings.CACHES,
+        "joist-own": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "joist-own",
+        },
+    }
+    settings_overrides("cache.alias", "joist-own")
+
+    cache = schema_cache()
+    key = cache.key("default")
+    assert caches["default"].get(key) is None  # nothing cached anywhere yet
+
+    fresh = cache.rebuild("default")
+    assert cache.last_error is None
+    assert caches["joist-own"].get(key)["generated_at"] == fresh["generated_at"]
+    assert caches["default"].get(key) is None  # the write went to the named store only

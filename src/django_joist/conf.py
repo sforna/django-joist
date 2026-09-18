@@ -30,6 +30,10 @@ DEFAULTS: dict[str, Any] = {
     # used. Example:
     #   "connections": {"analytics": {"excluded_tables": ["ingest_log"]}}
     "connections": {},
+    # ---- Degraded mode: when a connection is unreachable, replay the project's
+    # migrations on a throwaway in-memory SQLite database and introspect that
+    # instead. The result is flagged, never passed off as the live schema.
+    "fallback": {"enabled": True},
     # ---- Tables hidden from diagram and API, applied server-side (they never
     # reach the browser). Django's own bookkeeping tables are noise by default.
     "excluded_tables": [

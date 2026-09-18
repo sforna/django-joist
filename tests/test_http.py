@@ -77,6 +77,48 @@ def test_custom_authorizer_replaces_default(client, enabled, settings, settings_
     assert client.get(reverse("joist:index")).status_code == 404
 
 
+def test_an_authorizer_object_is_used_as_given(settings, settings_overrides):
+    from django_joist.security import resolve_authorizer
+
+    callback = lambda request: True  # noqa: E731 - a stand-in for a host's callable
+    settings_overrides("authorization.callable", callback)
+    assert resolve_authorizer() is callback
+
+
+def test_a_dotted_authorizer_path_is_imported(settings, settings_overrides):
+    from django_joist.security import default_authorizer, resolve_authorizer
+
+    settings_overrides("authorization.callable", "django_joist.security.default_authorizer")
+    assert resolve_authorizer() is default_authorizer
+
+
+def test_no_authorizer_falls_back_to_the_allow_list():
+    from django_joist.security import default_authorizer, resolve_authorizer
+
+    assert resolve_authorizer() is default_authorizer
+
+
+def test_a_broken_authorizer_path_fails_loudly(client, enabled, settings, settings_overrides):
+    # A misconfigured guard must not silently deny: that looks like a working
+    # install that shows nothing, and nobody can tell it apart from a 404.
+    from django.core.exceptions import ImproperlyConfigured
+
+    settings.DEBUG = False
+    settings_overrides("authorization.callable", "nope.not_here")
+    with pytest.raises(ImproperlyConfigured):
+        client.get(reverse("joist:index"))
+
+
+def test_a_non_callable_authorizer_is_rejected(settings_overrides):
+    from django.core.exceptions import ImproperlyConfigured
+
+    from django_joist.security import resolve_authorizer
+
+    settings_overrides("authorization.callable", 42)
+    with pytest.raises(ImproperlyConfigured, match="must be a callable or dotted path"):
+        resolve_authorizer()
+
+
 # -- schema endpoint ---------------------------------------------------------
 def test_schema_api_managed_allow_list(client, enabled):
     response = client.get(reverse("joist:api_schema"), {"connection": "not-configured"})
@@ -157,6 +199,47 @@ def test_asset_known_but_missing_is_404(client, enabled, tmp_path, settings, mon
     # Until the dashboard assets land this is a 404 (not found, not 500).
     # After the port it is served: assert either outcome is a clean response.
     assert response.status_code in (200, 404)
+
+
+def test_an_asset_cannot_escape_the_static_root(client, enabled, monkeypatch):
+    # Defense in depth on top of the basename allow-list: even an allow-listed
+    # name that resolves to a real file outside the static root is refused, so
+    # a mapping mistake cannot turn the asset route into a source reader.
+    monkeypatch.setitem(ASSETS, "escape.txt", "../../security.py")
+    assert client.get(reverse("joist:asset", args=["escape.txt"])).status_code == 404
+
+
+def test_schema_api_reports_a_broken_cache_store(client, enabled, settings_overrides):
+    # The dashboard reads this flag to say the structure was built live: a
+    # broken store costs speed, and the user should know why it is slow.
+    settings_overrides("cache.alias", "not-a-cache")
+    payload = json.loads(client.get(reverse("joist:api_schema")).content)
+    assert payload["cache_unavailable"] is True
+    assert payload["tables"]  # still complete: built from the live database
+
+
+def test_schema_api_reports_a_baseline_it_could_not_read(client, enabled, tmp_path, settings_overrides):
+    settings_overrides("diff.dir", str(tmp_path))
+    (tmp_path / "baselines").mkdir()
+    (tmp_path / "baselines" / "default.json").write_text("{not json")
+    payload = json.loads(client.get(reverse("joist:api_schema")).content)
+    assert payload["diff_unavailable"] is True
+    assert payload["diff"] is None
+
+
+def test_schema_api_omits_the_diff_when_the_feature_is_off(client, enabled, settings_overrides):
+    settings_overrides("diff.enabled", False)
+    payload = json.loads(client.get(reverse("joist:api_schema")).content)
+    assert payload["diff"] is None
+    assert "diff_unavailable" not in payload  # off is not the same as broken
+
+
+def test_export_route_can_drop_annotations(client, enabled, settings_overrides):
+    settings_overrides("annotations.tables", {"testapp_book": "Books"})
+    annotated = client.get(reverse("joist:export", args=["dbml"])).content.decode()
+    assert 'Note: "Books"' in annotated or "Books" in annotated
+    bare = client.get(reverse("joist:export", args=["dbml"]), {"no_annotations": "1"}).content.decode()
+    assert "Books" not in bare
 
 
 # -- export route ---------------------------------------------------------

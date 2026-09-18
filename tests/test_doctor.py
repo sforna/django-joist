@@ -363,6 +363,35 @@ def test_boolean_as_string():
     assert [f.column for f in findings] == ["is_active"]
 
 
+# -- shared rule helpers --------------------------------------------------------------
+@pytest.mark.parametrize(
+    "word,expected",
+    [
+        ("", ""),  # nothing to pluralize: rules then match on the bare name
+        ("book", "books"),
+        ("category", "categories"),  # consonant + y
+        ("key", "keys"),  # vowel + y stays
+        ("box", "boxes"),
+        ("class", "classes"),
+        ("match", "matches"),
+        ("dish", "dishes"),
+    ],
+)
+def test_pluralize_guesses_the_table_name_a_reference_implies(word, expected):
+    from django_joist.doctor.rules.base import pluralize
+
+    assert pluralize(word) == expected
+
+
+def test_column_type_lookup_is_optional():
+    from django_joist.doctor.rules.base import column_type
+
+    t = table("orders", columns=[col("id"), col("total", "double precision")])
+    assert column_type(t, "total") == "double precision"
+    assert column_type(t, "nope") is None
+    assert column_type({"name": "bare"}, "id") is None  # a table without columns
+
+
 # -- report payload (the HTTP contract) -------------------------------------------------
 def test_for_snapshot_payload_shape(settings_overrides):
     snapshot = {

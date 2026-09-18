@@ -79,3 +79,63 @@ def test_post_migrate_skips_fallback_alias(tmp_path, settings_overrides):
     signals.rebuild_after_migrate(sender=None, using=ghost)
     assert BaselineStore().get(ghost) is None
     assert not (tmp_path / "baselines").exists() or list((tmp_path / "baselines").iterdir()) == []
+
+
+def test_post_migrate_survives_a_hostile_cache(monkeypatch, caplog, settings_overrides):
+    """A migrate that already succeeded must not fail because of Joist.
+
+    The repository here is hostile on purpose: ``peek`` raises and ``rebuild``
+    reports a write failure, which are the two ways the listener could
+    otherwise let an exception escape into the migrate run.
+    """
+    import logging
+
+    settings_overrides("enabled", True)  # arm the listener
+
+    class Hostile:
+        last_error = "the cache store is on fire"
+
+        def managed_aliases(self):
+            return ["default"]
+
+        def peek(self, alias):
+            raise RuntimeError("cannot read the cache")
+
+        def rebuild(self, alias):
+            return {"connection": alias, "tables": []}
+
+    monkeypatch.setattr("django_joist.cache.schema_cache", lambda: Hostile())
+
+    with caplog.at_level(logging.WARNING, logger="joist"):
+        signals.rearm_after_migrate(sender=None, using="default")
+        signals.rebuild_after_migrate(sender=None, using="default")  # must not raise
+
+    assert "could not capture diff baseline" in caplog.text
+    assert "could not cache it" in caplog.text
+
+
+def test_post_migrate_never_lets_a_rebuild_failure_escape(monkeypatch, caplog, settings_overrides):
+    """The outer safety net: whatever the refresh raises, migrate keeps going."""
+    import logging
+
+    settings_overrides("enabled", True)
+
+    class Exploding:
+        last_error = None
+
+        def managed_aliases(self):
+            return ["default"]
+
+        def peek(self, alias):
+            return None
+
+        def rebuild(self, alias):
+            raise RuntimeError("the database went away")
+
+    monkeypatch.setattr("django_joist.cache.schema_cache", lambda: Exploding())
+
+    with caplog.at_level(logging.WARNING, logger="joist"):
+        signals.rearm_after_migrate(sender=None, using="default")
+        signals.rebuild_after_migrate(sender=None, using="default")  # must not raise
+
+    assert "post-migration refresh failed for [default]" in caplog.text
