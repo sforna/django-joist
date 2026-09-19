@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-19
+
 ### Fixed
 
 - Fallback snapshot replay no longer aborts when one migration fails: the
   remaining migrations are still applied, so the reconstructed structure stays
   as close to the live schema as possible.
+- The dashboard's landmark and live-region structure (WCAG 4.1.3): the toolbar
+  is a `<header>`, the three overlays are named `<aside>`s, and the notice
+  banner is a polite status region, so a failure to load the schema is
+  announced and not only drawn.
+- The shared popover is a labelled non-modal dialog, so each of the four menus
+  it holds (a table's, a column list, an enum list, the export menu) announces
+  what it is.
 
 ## [0.1.0] - 2026-09-11
 
@@ -61,5 +70,6 @@ Initial release.
 - Excluded tables are filtered server-side, so their structure never reaches
   the browser.
 
-[Unreleased]: https://github.com/sforna/django-joist/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/sforna/django-joist/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/sforna/django-joist/releases/tag/v0.1.1
 [0.1.0]: https://github.com/sforna/django-joist/releases/tag/v0.1.0
