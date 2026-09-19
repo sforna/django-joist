@@ -5,6 +5,15 @@ on:
     branches: [main]
   pull_request:
 
+# A superseded push cancels the run it replaced instead of queueing a whole
+# matrix behind it. Nothing here needs more than read access to the checkout.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -14,8 +23,8 @@ jobs:
         python: ["3.13", "3.14"]
         django: ["~=5.2.0", "~=6.0.0", "~=6.1.0"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - run: pip install "Django${{ matrix.django }}" pytest pytest-django
@@ -46,8 +55,8 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: pip install "Django~=6.1.0" pytest pytest-django "psycopg[binary]"
@@ -77,8 +86,8 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       # PyMySQL rather than mysqlclient: same protocol, no C build, so this lane
@@ -101,8 +110,8 @@ jobs:
     runs-on: ubuntu-latest
     name: JavaScript
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - run: npm test
@@ -112,12 +121,15 @@ jobs:
   browser:
     runs-on: ubuntu-latest
     name: Browser - Python 3.13 - Django 6.1 - Chromium
+    # The lane boots a dev server and a browser; a hang there should not sit on
+    # the six-hour default.
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - run: pip install "Django~=6.1.0" -e .

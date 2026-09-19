@@ -1,0 +1,21 @@
+# The two ecosystems that go stale on their own. Python is left out: the only
+# requirements are floors (Django>=5.2, pytest, pytest-django), so there is
+# nothing for Dependabot to bump until one of them gets an upper bound.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      js:
+        patterns: ["*"]
