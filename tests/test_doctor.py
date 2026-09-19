@@ -552,3 +552,59 @@ def test_command_table_and_category_filters(command):
     assert rc == 1
     assert "JOIST-INT-001" in cmd.stdout.getvalue()
     assert "JOIST-TYP" not in cmd.stdout.getvalue()
+
+
+# -- CLI surface: the argument parser and the process exit status ------------
+# Everything above builds the options dict by hand and calls ``handle()``, which
+# bypasses ``add_arguments`` entirely: a typo'd ``dest``, a flag that never made
+# it into the parser, or a broken exit-code wrapper would pass all of it. These
+# go through the real argv path - argparse, then ``cli.JoistCommand`` turning the
+# returned int into a process status. Both aliases are marked because
+# ``execute()`` runs Django's own system checks, which read connection feature
+# flags; the snapshot itself stays the fake one above.
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_argv_parses_every_option_and_carries_the_status(command):
+    snapshot = {
+        "connection": "default",
+        "tables": [
+            # No primary key (integrity) and a float money column (type).
+            table("logs", [col("id"), col("amount", "double precision")], pk=[]),
+            table("money", [col("id"), col("total", "float")], pk=[]),
+        ],
+    }
+    cmd = command(snapshot)
+    with pytest.raises(SystemExit) as exc:
+        cmd.run_from_argv(
+            [
+                "manage.py", "joist_doctor",
+                "--database", "default",
+                "--table", "logs",
+                "--only", "integrity,type",
+                "--skip", "type",
+                "--preset", "strict",
+                "--format", "json",
+                "--fail-on", "warning",
+            ]
+        )
+    assert exc.value.code == 1
+    payload = json.loads(cmd.stdout.getvalue())
+    # The two filters have to bite for this to hold: with --table ignored the
+    # money table contributes its own missing-primary-key finding, and with
+    # --skip ignored the log table's float column adds a JOIST-TYP one.
+    assert [f["code"] for f in payload["findings"]] == ["JOIST-INT-001"]
+
+
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_argv_rejects_an_invalid_option_with_status_two(command):
+    cmd = command({"connection": "default", "tables": []})
+    with pytest.raises(SystemExit) as exc:
+        cmd.run_from_argv(["manage.py", "joist_doctor", "--format", "yaml"])
+    assert exc.value.code == 2
+    assert "Invalid --format" in cmd.stderr.getvalue()
+
+
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_argv_clean_run_exits_zero(command):
+    cmd = command({"connection": "default", "tables": [table("ok")]})
+    cmd.run_from_argv(["manage.py", "joist_doctor"])  # no SystemExit: a clean run is 0
+    assert "no findings" in cmd.stdout.getvalue()

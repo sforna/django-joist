@@ -8,6 +8,7 @@ import io
 import json
 
 import pytest
+from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from django_joist.export.annotator import Annotator, comments_from_snapshot
@@ -469,3 +470,72 @@ def test_command_focus_and_compact():
     _, compact_md, _ = _run(format="markdown", tables="testapp_book", compact=True)
     assert "uq_book_author_title" not in compact_md
     assert "(author_id, title) UNIQUE" in compact_md
+
+
+# -- CLI surface: the argument parser and the process exit status -----------
+# The runs above build the options dict by hand, so ``add_arguments`` is never
+# exercised: a typo'd ``dest``, a flag that never reached the parser or a missing
+# ``type=int`` would pass every one of them. These go through the real argv path.
+# Both aliases are marked because ``execute()`` runs Django's own system checks,
+# which read the connection's feature flags; the snapshot itself stays the test
+# project's.
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_argv_flags_reach_the_builder(settings_overrides):
+    settings_overrides("annotations.tables", {"testapp_book": "nope"})
+    out = io.StringIO()
+    call_command(
+        "joist_export",
+        "--format", "json",
+        "--database", "default",
+        "--tables", "testapp_book,testapp_author",
+        "--exclude", "testapp_author",
+        "--compact",
+        "--no-annotations",
+        stdout=out,
+    )
+    text = out.getvalue()
+    payload = json.loads(text)
+    # --tables selects and --exclude subtracts: the author survives only as a
+    # foreign-key target name, never as an exported table.
+    assert [t["name"] for t in payload] == ["testapp_book"]
+    assert "uq_book_author_title" not in text  # --compact drops the index name
+    assert "nope" not in text  # --no-annotations wins over annotations.tables
+
+
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_argv_depth_is_parsed_as_an_int():
+    out = io.StringIO()
+    call_command(
+        "joist_export", "--format", "llm", "--focus", "testapp_book", "--depth", "1", stdout=out
+    )
+    lines = out.getvalue().splitlines()
+    assert "testapp_author" in lines  # depth 1: a parent
+    assert "testapp_tag" not in lines  # depth 2, so out of reach
+
+
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_argv_check_drift_is_the_process_status(tmp_path):
+    target = tmp_path / "schema.dbml"
+    call_command("joist_export", "--format", "dbml", "--output", str(target))
+    assert target.is_file()
+    target.write_text(target.read_text() + "\n-- drift --\n")
+
+    err = io.StringIO()
+    with pytest.raises(SystemExit) as exc:
+        call_command("joist_export", "--check", "--output", str(target), stderr=err)
+    # 1 is the gate CI reads, not a return value Django would discard.
+    assert exc.value.code == 1
+    assert "out of date" in err.getvalue()
+
+
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_argv_usage_error_is_reported_and_exits_two():
+    from django_joist.management.commands.joist_export import Command
+
+    cmd = Command(stdout=io.StringIO(), stderr=io.StringIO())
+    with pytest.raises(SystemExit) as exc:
+        cmd.run_from_argv(["manage.py", "joist_export", "--format", "toml"])
+    assert exc.value.code == 2
+    # run_from_argv is the only place that prints a CommandError and turns its
+    # returncode into the process status; call_command lets it propagate instead.
+    assert "CommandError: Unknown --format [toml]" in cmd.stderr.getvalue()
