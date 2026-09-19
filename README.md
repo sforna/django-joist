@@ -200,6 +200,15 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
+Supported versions are declared once, in `pyproject.toml`, and the CI matrix is
+derived from them rather than the other way round: `requires-python` gives the
+Python floor, the `Framework :: Django :: *` classifiers give the Django list,
+and every combination of the two runs. Because `Django>=5.2` carries no ceiling,
+the newest Django release is additionally tested in its own job, so a new Django
+is caught here instead of by users — a version added to the metadata belongs in
+`.github/workflows/tests.yml` (and in `release.yml`, which repeats the matrix to
+gate a tag) in the same commit.
+
 The suite runs on SQLite by default. The PostgreSQL and MySQL lanes are the
 same suite against a real server: install the driver (`psycopg[binary]` for
 PostgreSQL, `pymysql[rsa]` for MySQL — `tests/settings.py` registers it as

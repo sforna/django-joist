@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # The same declared combinations as tests.yml, repeated here because a tag
+      # is what publishes: a release has to prove the matrix it ships, not only
+      # that the branch was green at some earlier commit. Kept as one list in
+      # two places rather than a reusable workflow; when either changes, change
+      # both. The `Django latest` canary is deliberately not repeated - it
+      # watches the next Django, and a release should not be blocked by it.
       matrix:
         python: ["3.13", "3.14"]
         django: ["~=5.2.0", "~=6.0.0", "~=6.1.0"]
