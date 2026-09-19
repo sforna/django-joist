@@ -29,5 +29,16 @@ export default defineConfig({
     timeout: 120_000,
     env: { JOIST_BROWSER_PORT: port },
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // Firefox runs one spec, not the suite. Issue #59 was a Firefox-only
+    // clipping bug that no other engine reproduced, so label geometry earns a
+    // second engine; the interaction specs would only re-verify logic that is
+    // not engine-specific, at roughly double the lane's time.
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+      testMatch: /label-clipping\.spec\.js/,
+    },
+  ],
 });

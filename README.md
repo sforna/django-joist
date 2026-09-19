@@ -216,12 +216,13 @@ the snapshot fell back to SQLite instead of reading the server.
 
 The client-side logic has its own suite on Node's built-in test runner (no build
 step: the assets ship as native ES modules), and the browser lane drives the real
-app in Chromium.
+app in Chromium - plus Firefox for the label-geometry spec, which is the one
+thing only a second engine can check (see its comment for why).
 
 ```bash
 npm install
-npm test                        # the client-side logic and the stylesheet invariants
-npx playwright install chromium # once
+npm test                                  # the client-side logic and the stylesheet invariants
+npx playwright install chromium firefox   # once
 JOIST_PYTHON=.venv/bin/python npm run test:e2e
 ```
 
