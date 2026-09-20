@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The vendored Mermaid moves from 11.16.0 to 11.17.2 - the verbatim
+  `dist/mermaid.min.js` of that npm release, as before. The version is now
+  recorded in `mermaid.LICENSE` and asserted by `tests/test_static.py`
+  together with the bundle's flavour (the IIFE that assigns the `mermaid`
+  global), so a swapped file, a forgotten note and an ESM-only build each fail
+  there instead of shipping a blank diagram with no error.
+
 - A default palette of its own. The shipped colours were byte-for-byte those
   of the reference implementation, so a default install was indistinguishable
   from it: a navy blueprint on a blue-tinted canvas. The default is now a

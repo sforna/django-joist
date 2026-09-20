@@ -1,5 +1,6 @@
 Mermaid (https://github.com/mermaid-js/mermaid) is bundled here under the MIT License.
-This directory contains a verbatim copy of mermaid.min.js for self-hosted, CDN-free delivery.
+This directory contains a verbatim copy of mermaid.min.js v11.17.2 (the
+`dist/mermaid.min.js` of that npm release) for self-hosted, CDN-free delivery.
 
 The MIT License (MIT)
 

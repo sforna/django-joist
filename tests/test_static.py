@@ -48,6 +48,23 @@ def test_assets_served_with_types(client, enabled_joist):
             assert "javascript" in CT
 
 
+def test_vendored_mermaid_is_the_pinned_version():
+    """The bundle's version only exists as a literal inside the minified file,
+    and nothing else in the repo records which release was vendored. The note
+    beside it is the pin, so a swapped file and a forgotten note fail here
+    together instead of silently shipping one without the other."""
+    note = (STATIC / "vendor" / "mermaid.LICENSE").read_text(encoding="utf-8")
+    pinned = re.search(r"mermaid\.min\.js v(\d+\.\d+\.\d+)", note)
+    assert pinned, "the vendored Mermaid version is not recorded in mermaid.LICENSE"
+
+    bundle = (STATIC / "vendor" / "mermaid.min.js").read_text(encoding="utf-8", errors="replace")
+    assert f'version:"{pinned.group(1)}"' in bundle
+    # The shell loads this with a plain <script src>, so the bundle has to keep
+    # the IIFE flavour that assigns the global. An ESM-only build would leave
+    # the page with no `mermaid` at all - a blank diagram, no error.
+    assert 'globalThis["mermaid"]' in bundle
+
+
 def test_css_renamed_consistently():
     css = (STATIC / "css" / "joist.css").read_text(encoding="utf-8")
     assert ".joist-" in css
