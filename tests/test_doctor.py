@@ -184,7 +184,8 @@ def test_fk_type_mismatch():
                 fks=[fk("fk_p", ["parent_id"], "parent")],
             ),
             table("parent", columns=[col("id", "bigint unsigned")]),
-        ]
+        ],
+        driver="mysql",  # signed versus unsigned is a MySQL constraint
     )
     findings = check(ForeignKeyTypeMismatch(), snapshot)
     assert len(findings) == 1
@@ -193,6 +194,40 @@ def test_fk_type_mismatch():
     # matching types silent
     snapshot["tables"][1]["columns"][0]["type"] = "integer"
     assert check(ForeignKeyTypeMismatch(), snapshot) == []
+
+
+def test_fk_type_mismatch_follows_sqlite_affinity():
+    """Django's own DDL on SQLite: a BigAutoField primary key is ``integer``
+    while the foreign keys pointing at it are ``bigint``. Same affinity, so
+    the same column - reporting it flags every project on the modern default."""
+    snapshot = snap(
+        [
+            table(
+                "child",
+                columns=[col("id", "integer"), col("parent_id", "bigint")],
+                fks=[fk("fk_p", ["parent_id"], "parent")],
+            ),
+            table("parent", columns=[col("id", "integer")]),
+        ]
+    )
+    assert check(ForeignKeyTypeMismatch(), snapshot) == []
+    # an engine that does distinguish the two widths is unaffected by the skip
+    assert len(check(ForeignKeyTypeMismatch(), snap(snapshot["tables"], driver="postgresql"))) == 1
+    # affinity is not a blanket amnesty: different families still mismatch
+    snapshot["tables"][0]["columns"][1]["type"] = "varchar(36)"
+    findings = check(ForeignKeyTypeMismatch(), snapshot)
+    assert len(findings) == 1
+    assert "varchar(36)" in findings[0].message
+
+
+def test_sqlite_affinity_ladder():
+    from django_joist.doctor.rules.integrity import _sqlite_affinity as affinity
+
+    assert affinity("INTEGER") == affinity("bigint unsigned") == "integer"
+    assert affinity("varchar(200)") == affinity("TEXT") == "text"
+    assert affinity("real") == affinity("double precision") == "real"
+    assert affinity("") == "blob"
+    assert affinity("decimal(10,2)") == "numeric"
 
 
 def test_pivot_without_unique_key():

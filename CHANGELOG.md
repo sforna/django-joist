@@ -30,6 +30,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- ``JOIST-INT-003`` no longer reports Django's own ``BigAutoField`` DDL as a
+  type mismatch on SQLite. The backend declares such a primary key ``integer``
+  (SQLite's rowid alias) and every foreign key pointing at it ``bigint``
+  (``BigAutoField.rel_db_type``), so the raw names differ on every foreign key
+  of every project on the modern default - all of them on the one engine where
+  the two are the same column (both INTEGER affinity). Types are now compared
+  by affinity on SQLite, and by name everywhere else, because there they must
+  match. On the bundled demo schema this turns 30 errors into 1: the 29 false
+  positives go, the deliberate unindexed foreign key stays.
+
 - The shared popover's explanatory comment no longer renders as visible text at
   the bottom of the dashboard. Django's template lexer matches `{# ... #}`
   comments without `re.DOTALL`, so the wrapped four-line comment was emitted as

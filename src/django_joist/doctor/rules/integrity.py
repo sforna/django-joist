@@ -120,10 +120,46 @@ class LikelyMissingForeignKey(Rule):
         return None
 
 
+def _sqlite_affinity(type_name: str) -> str:
+    """The affinity SQLite gives a declared type, in the order of
+    https://sqlite.org/datatype3.html#determination_of_column_affinity. Two
+    columns of equal affinity are the same column to SQLite whatever they were
+    called, so the declared name is not the thing to compare."""
+    lowered = type_name.lower()
+    if "int" in lowered:
+        return "integer"
+    if "char" in lowered or "clob" in lowered or "text" in lowered:
+        return "text"
+    if "blob" in lowered or not lowered:
+        return "blob"
+    if "real" in lowered or "floa" in lowered or "doub" in lowered:
+        return "real"
+    return "numeric"
+
+
+def _same_type(driver: str, local_type: str, referenced_type: str) -> bool:
+    """Whether the engine in use sees two declared types as one type."""
+    if local_type == referenced_type:
+        return True
+    if driver == "sqlite":
+        return _sqlite_affinity(local_type) == _sqlite_affinity(referenced_type)
+    return False
+
+
 class ForeignKeyTypeMismatch(Rule):
     """JOIST-INT-003: a foreign key whose column type does not match the type
     of the key it references. Compared per column, so composite keys are
-    covered. Skipped when the referenced table is not in the snapshot."""
+    covered. Skipped when the referenced table is not in the snapshot.
+
+    Django adaptation: on SQLite the declared type of an integer column only
+    sets its affinity, and Django relies on that. A ``BigAutoField`` primary
+    key is created as ``integer`` (SQLite needs the rowid alias, see the
+    backend's ``data_types``) while every foreign key pointing at it is
+    created as ``bigint`` (``BigAutoField.rel_db_type``), so comparing the raw
+    names reports every foreign key of every project that uses the modern
+    default - a mismatch Django itself made, on the one engine where it costs
+    nothing. Types are compared by affinity on SQLite; elsewhere they must
+    match, because there they do."""
 
     code = "JOIST-INT-003"
     category = Category.INTEGRITY
@@ -148,7 +184,9 @@ class ForeignKeyTypeMismatch(Rule):
 
                     local_type = _column_type(table, column)
                     referenced_type = _column_type(referenced, referenced_column)
-                    if local_type is None or referenced_type is None or local_type == referenced_type:
+                    if local_type is None or referenced_type is None:
+                        continue
+                    if _same_type(snapshot.get("driver") or "", local_type, referenced_type):
                         continue
 
                     yield Finding(
