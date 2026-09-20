@@ -37,3 +37,6 @@ node_modules/
 .DS_Store
 .idea/
 .vscode/
+
+# The demo project: local database, joist baseline and derived build state
+demo/var/
