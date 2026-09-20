@@ -44,7 +44,7 @@ row data is never queried or exposed.
   codes; the same findings power the dashboard's Health panel.
 - Multiple databases: list aliases under `JOIST["connections"]` and switch
   diagrams from the toolbar, each scoped to its own database.
-- Light/dark "blueprint" theme, or bring your own: a handful of semantic
+- Light/dark drafting-grid theme, or bring your own: a handful of semantic
   colour/font knobs re-skin the whole dashboard, served as a same-origin
   stylesheet (CSP-safe, no inline styles).
 - Rebuilds itself: the cached snapshot refreshes after every `migrate` and

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- A default palette of its own. The shipped colours were byte-for-byte those
+  of the reference implementation, so a default install was indistinguishable
+  from it: a navy blueprint on a blue-tinted canvas. The default is now a
+  neutral graphite canvas with an indigo ink and a magenta accent, in both
+  themes. Only colours changed - the drafting grid, the layout and the JS are
+  untouched, and every host-configured `JOIST["theme"]` knob still wins.
+- The FK connector lines now meet 3:1 against the canvas in light mode
+  (`--bp-rel` was 2.92:1, a pre-existing miss). A new
+  `tests/test_palette_contrast.py` holds the whole default palette to 4.5:1
+  for text pairs and 3:1 for graphic pairs, in all three palette blocks, and
+  fails if the two dark blocks drift apart.
+
 ### Fixed
 
 - The shared popover's explanatory comment no longer renders as visible text at
