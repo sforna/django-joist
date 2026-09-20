@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The shared popover's explanatory comment no longer renders as visible text at
+  the bottom of the dashboard. Django's template lexer matches `{# ... #}`
+  comments without `re.DOTALL`, so the wrapped four-line comment was emitted as
+  literal text instead of being stripped.
+
 ## [0.1.1] - 2026-09-19
 
 ### Fixed
