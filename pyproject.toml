@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "django-joist"
-version = "0.1.1"
+version = "0.1.2"
 description = "A live database structure viewer for Django. Renders your schema (never data) as a zoomable ER diagram, with exports, a schema doctor and a schema diff."
 readme = "README.md"
 license = "MIT AND OFL-1.1"
