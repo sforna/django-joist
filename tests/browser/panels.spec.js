@@ -37,13 +37,14 @@ test('the health panel carries the doctor findings, with the node marked', async
   const panel = page.locator('#joist-health-panel');
   await expect(panel).toBeVisible();
 
-  // The PK-less table and the unindexed foreign keys come from the fixture
-  // schema, so these are findings over a real database rather than a mock. The
+  // The PK-less table and the unindexed foreign key come from the raw-DDL
+  // fixtures, so these are findings over a real database rather than a mock. The
   // default preset is `recommended`, which leaves the heuristic rules out: the
   // float-as-money finding is asserted in the Python doctor tests instead.
   await expect(panel).toContainText('testapp_nopk');
   await expect(panel).toContainText('JOIST-INT-001');
-  await expect(panel).toContainText('publisher_id');
+  await expect(panel).toContainText('testapp_fkaction');
+  await expect(panel).toContainText('JOIST-IDX-001');
   await expect(panel.locator('.joist-health-code').first()).toHaveText(/^JOIST-/);
 
   // The offending column is marked on the diagram, not only listed in the panel.
