@@ -84,6 +84,47 @@ app, so your `TEMPLATES` must keep `"APP_DIRS": True` for `django_joist`
 (the default in `django-admin startproject`); if you disabled it, add the
 package's template directory to `DIRS`.
 
+### Development-only install
+
+To keep Joist out of production builds entirely, declare it as a development
+dependency of your project, the way `composer require --dev` would:
+
+```bash
+uv add --dev django-joist              # deploy with: uv sync --no-dev
+poetry add --group dev django-joist    # deploy with: poetry install --without dev
+```
+
+With plain pip, list it in a `dev` group under `[dependency-groups]` in your
+project's `pyproject.toml` (installed only by `pip install --group dev`, pip
+25.1+), or in a `requirements-dev.txt` your deploy never installs.
+
+Unlike Laravel's auto-discovery, Django imports everything named in
+`INSTALLED_APPS` and `urls.py`, so a production build without the package
+fails at startup unless both entries are conditional. Test for the package
+itself rather than for `DEBUG`, so a deploy that turns `DEBUG` on by mistake
+still boots:
+
+```python
+# settings.py
+from importlib.util import find_spec
+
+if find_spec("django_joist"):
+    INSTALLED_APPS += ["django_joist"]
+
+# urls.py
+from importlib.util import find_spec
+
+if find_spec("django_joist"):
+    urlpatterns += [path("joist/", include("django_joist.urls"))]
+```
+
+Removing Joist leaves nothing behind: it has no models and no migrations. The
+management commands go with it, so a CI job that runs `joist_doctor` or
+`joist_export --check` must install the development dependencies.
+
+To run Joist gated on staging or production instead, install it as a regular
+dependency (above) and see the next section.
+
 ## Quick start
 
 By default Joist is enabled when `DEBUG = True`. Start your dev server and
