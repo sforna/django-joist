@@ -107,11 +107,77 @@ def test_a_table_without_a_primary_key_is_reported_as_such():
     assert sorted(columns(table)) == ["label", "qty"]
 
 
-@native
-def test_the_doctor_flags_the_pk_less_table_on_a_real_server():
-    snapshot = schema_cache().get("default")
+# -- the doctor --------------------------------------------------------------
+#: The whole strict verdict on the test app, as (severity, code, table,
+#: column). Every rule is unit-tested on synthetic snapshots in test_doctor.py;
+#: this is the other half - what the doctor says about a schema each backend
+#: really built, so a catalog reader that drops or respells something shows up
+#: as a finding gained or lost. Exact on purpose: a new false positive fails
+#: here as surely as a missed bait.
+_EVERY_LANE = {
+    ("error", "JOIST-INT-001", "testapp_nopk", None),
+    ("error", "JOIST-TYP-001", "testapp_publisher", "balance"),
+    ("warning", "JOIST-INT-009", "testapp_label", "content_type_id"),
+    ("warning", "JOIST-IDX-005", "testapp_legacyrow", "deleted_at"),
+    ("warning", "JOIST-TYP-002", "testapp_legacyrow", "is_active"),
+    ("warning", "JOIST-IDX-006", "testapp_tag", "slug"),
+}
+_SQLITE_AND_POSTGRES = {
+    # The raw-DDL key has no index at all.
+    ("error", "JOIST-IDX-001", "testapp_fkaction", "author_id"),
+    # Django indexes every foreign key, including one that already leads a
+    # unique constraint.
+    ("warning", "JOIST-IDX-003", "testapp_book", "testapp_book_author_id_b4b7b7bf"),
+    ("warning", "JOIST-IDX-003", "testapp_booktag", "testapp_booktag_book_id_7d7e8ab9"),
+    # SlugField's own db_index next to Meta.indexes on the same column.
+    ("warning", "JOIST-IDX-002", "testapp_tag", "testapp_tag_slug_c93666de"),
+}
+DOCTOR_VERDICT = {
+    "sqlite": _EVERY_LANE | _SQLITE_AND_POSTGRES,
+    "postgres": _EVERY_LANE | _SQLITE_AND_POSTGRES,
+    # InnoDB indexes each foreign key itself, under the constraint's name, and
+    # Django skips its own index there: nothing is unindexed and nothing is a
+    # redundant prefix. Index order also differs, so the duplicate reported is
+    # the other one of the pair.
+    "mysql": _EVERY_LANE | {("warning", "JOIST-IDX-002", "testapp_tag", "testapp_tag_slug_267481_idx")},
+}
+
+
+def test_the_doctor_verdict_on_the_test_app_is_exactly_the_expected_one():
+    snapshot = schema_cache().rebuild("default")
     findings = findings_for("default", snapshot, preset="strict")
-    assert any(f.code == "JOIST-INT-001" and f.table == "testapp_nopk" for f in findings)
+    verdict = {
+        (f.severity.value, f.code, f.table, f.column)
+        for f in findings
+        if f.table.startswith("testapp_")
+    }
+    assert verdict == DOCTOR_VERDICT[LANE]
+
+
+def test_the_recommended_preset_keeps_only_the_high_confidence_findings():
+    # The CI default. Heuristic rules stay quiet, so on a Django-made schema
+    # only the raw-DDL bait and Django's own index layout remain.
+    snapshot = schema_cache().rebuild("default")
+    codes = {f.code for f in findings_for("default", snapshot) if f.table.startswith("testapp_")}
+    assert not codes & {"JOIST-INT-002", "JOIST-INT-009", "JOIST-IDX-005", "JOIST-IDX-006", "JOIST-TYP-001", "JOIST-TYP-002"}
+    assert "JOIST-INT-001" in codes
+
+
+def test_the_doctor_sees_no_type_mismatch_in_keys_django_created():
+    # Django pairs each key with the type of the one it references (bigint to
+    # bigint, and on SQLite bigint to integer, which the rule reads by
+    # affinity). Any JOIST-INT-003 here, on any table, is a false positive.
+    snapshot = schema_cache().rebuild("default")
+    assert [f for f in findings_for("default", snapshot, preset="strict") if f.code == "JOIST-INT-003"] == []
+
+
+@native
+def test_the_doctor_reads_the_live_vendor_not_the_fallback():
+    snapshot = schema_cache().rebuild("default")
+    assert snapshot["fallback"] is False
+    from django_joist.doctor import DoctorReport
+
+    assert DoctorReport._driver_for("default") == VENDOR
 
 
 # -- comments ----------------------------------------------------------------

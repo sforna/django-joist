@@ -230,6 +230,39 @@ def test_sqlite_affinity_ladder():
     assert affinity("decimal(10,2)") == "numeric"
 
 
+def test_a_fallback_snapshot_keeps_the_live_vendor_but_sqlite_types(monkeypatch):
+    """A fallback snapshot is a SQLite replay of an alias whose real database
+    is another vendor. As in the reference, the rules are told that vendor -
+    the findings are about the real database - but the type names are
+    SQLite's, so JOIST-INT-003 reads them by affinity. Without that, Django's
+    own integer/bigint key pair is an error on every foreign key of a project
+    whose database is unreachable."""
+    snapshot = {
+        "connection": "default",
+        "fallback": True,
+        "tables": [
+            table(
+                "child",
+                columns=[col("id", "INTEGER"), col("parent_id", "bigint")],
+                fks=[fk("fk_p", ["parent_id"], "parent")],
+            ),
+            table("parent", columns=[col("id", "INTEGER")]),
+        ],
+    }
+    monkeypatch.setattr(DoctorReport, "_driver_for", staticmethod(lambda alias: "mysql"))
+
+    payload = DoctorReport().for_snapshot("default", snapshot, preset="strict")
+    codes = {f["code"]: f for f in payload["findings"]}
+    assert "JOIST-INT-003" not in codes
+    # The unindexed key is judged as MySQL would judge it: InnoDB indexes it.
+    assert codes["JOIST-IDX-001"]["severity"] == "info"
+
+    # A live snapshot on a server compares the names, where the pair is a real mismatch.
+    snapshot["fallback"] = False
+    payload = DoctorReport().for_snapshot("default", snapshot, preset="strict")
+    assert [f for f in payload["findings"] if f["code"] == "JOIST-INT-003"]
+
+
 def test_pivot_without_unique_key():
     pivot_bad = table(
         "book_tag",

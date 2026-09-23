@@ -175,3 +175,33 @@ def test_fallback_retries_per_migration_when_the_run_aborts(monkeypatch, django_
     # from there instead of re-applying what the fresh executor already knew.
     assert snapshot["skipped_migrations"] == ["contenttypes.0001_initial"]
     assert "testapp_book" in [t["name"] for t in snapshot["tables"]]
+
+
+# -- the doctor on a replay --------------------------------------------------
+def test_the_doctor_on_a_replay_judges_the_live_backend(django_db_blocker):
+    # The replay is SQLite whatever the alias's own vendor, so on the
+    # PostgreSQL and MySQL lanes this is a server's alias carrying SQLite's
+    # types. As in the reference, the rules are told the live vendor; only
+    # JOIST-INT-003 reads the types as SQLite's, or Django's integer primary
+    # key and bigint foreign keys would be an error on every key. So the
+    # verdict is the SQLite lane's structure, with the unindexed key judged as
+    # the live backend would: an error, or info on MySQL, which indexes it.
+    from django_joist.doctor import findings_for
+    from tests.test_backends import DOCTOR_VERDICT, LANE
+
+    unindexed = ("error", "JOIST-IDX-001", "testapp_fkaction", "author_id")
+    expected = set(DOCTOR_VERDICT["sqlite"])
+    if LANE == "mysql":
+        expected = (expected - {unindexed}) | {("info", *unindexed[1:])}
+
+    with django_db_blocker.unblock():
+        snapshot = replay_migrations_on_sqlite("default", SnapshotBuilder())
+        findings = findings_for("default", snapshot, preset="strict")
+    assert snapshot["fallback"] is True
+    verdict = {
+        (f.severity.value, f.code, f.table, f.column)
+        for f in findings
+        if f.table.startswith("testapp_")
+    }
+    assert verdict == expected
+    assert [f for f in findings if f.code == "JOIST-INT-003"] == []

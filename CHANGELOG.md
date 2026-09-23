@@ -40,6 +40,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   match. On the bundled demo schema this turns 30 errors into 1: the 29 false
   positives go, the deliberate unindexed foreign key stays.
 
+- ``JOIST-INT-003`` compares a fallback snapshot's types by SQLite affinity.
+  The replay behind `fallback: true` is SQLite whatever the alias's own
+  backend, so on an unreachable PostgreSQL or MySQL database the rule compared
+  SQLite's type names under the live vendor's rules and reported every foreign
+  key as an error. The other rules are still told the live vendor, as in the
+  reference, since the findings are about the real database.
+
+- On MySQL the snapshot keeps the index InnoDB builds for each foreign key.
+  InnoDB names it after the constraint and Django's introspection reports the
+  two as one entry, which the snapshot read as a foreign key only - Django
+  creates no index of its own there, so the key looked unindexed.
+  ``JOIST-IDX-001`` reported every such key, and the diagram and exports were
+  missing the index.
+
 - The shared popover's explanatory comment no longer renders as visible text at
   the bottom of the dashboard. Django's template lexer matches `{# ... #}`
   comments without `re.DOTALL`, so the wrapped four-line comment was emitted as

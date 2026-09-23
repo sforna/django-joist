@@ -159,7 +159,11 @@ class ForeignKeyTypeMismatch(Rule):
     names reports every foreign key of every project that uses the modern
     default - a mismatch Django itself made, on the one engine where it costs
     nothing. Types are compared by affinity on SQLite; elsewhere they must
-    match, because there they do."""
+    match, because there they do.
+
+    A fallback snapshot is a SQLite replay whatever the alias's vendor, so
+    its types are SQLite's too and are compared the same way, while
+    ``driver`` still names the live vendor for the other rules."""
 
     code = "JOIST-INT-003"
     category = Category.INTEGRITY
@@ -169,6 +173,7 @@ class ForeignKeyTypeMismatch(Rule):
 
     def check(self, snapshot: dict, connection: str) -> Iterable[Finding]:
         by_name = {t["name"]: t for t in snapshot.get("tables", [])}
+        types_of = "sqlite" if snapshot.get("fallback") else snapshot.get("driver") or ""
 
         for table in by_name.values():
             for fk in table.get("foreign_keys", []):
@@ -186,7 +191,7 @@ class ForeignKeyTypeMismatch(Rule):
                     referenced_type = _column_type(referenced, referenced_column)
                     if local_type is None or referenced_type is None:
                         continue
-                    if _same_type(snapshot.get("driver") or "", local_type, referenced_type):
+                    if _same_type(types_of, local_type, referenced_type):
                         continue
 
                     yield Finding(

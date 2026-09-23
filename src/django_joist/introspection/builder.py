@@ -154,7 +154,12 @@ class SnapshotBuilder:
                         on_delete=self._normalize_action(actions.get("on_delete")),
                     )
                 )
-                continue
+                # MySQL: InnoDB indexes a foreign key under the constraint's
+                # own name, and get_constraints reports both in one entry. It
+                # is a real index (Django skips making its own there), so it
+                # is kept as one.
+                if not info.get("index"):
+                    continue
             is_index = bool(info.get("index"))
             is_unique = bool(info.get("unique"))
             if (is_index or is_unique) and cols:

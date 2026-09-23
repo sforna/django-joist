@@ -128,6 +128,46 @@ def test_an_unknown_callable_is_not_guessed():
     assert SnapshotBuilder._normalize_action(SOMETHING_ELSE) is None
 
 
+# -- constraints -------------------------------------------------------------
+def test_a_foreign_key_that_is_also_an_index_yields_both():
+    # MySQL's shape: InnoDB indexes a foreign key under the constraint's own
+    # name (Django relies on it and skips its own index there), so
+    # get_constraints merges the two into one entry. Dropping the index half
+    # made every such key read as unindexed to the doctor (JOIST-IDX-001).
+    name = "book_author_id_fk"
+    constraints = {
+        name: {
+            "columns": ["author_id"],
+            "primary_key": False,
+            "unique": False,
+            "check": False,
+            "index": True,
+            "foreign_key": ("author", "id"),
+        },
+    }
+    table = SnapshotBuilder()._table("book", [], constraints, {}, {}, {}, {})
+    assert [fk.name for fk in table.foreign_keys] == [name]
+    assert [(i.name, i.columns, i.unique) for i in table.indexes] == [(name, ("author_id",), False)]
+
+
+def test_a_foreign_key_alone_is_not_an_index():
+    # PostgreSQL and SQLite report the constraint with index False; the
+    # index, when Django made one, is a separate entry.
+    constraints = {
+        "book_author_id_fk": {
+            "columns": ["author_id"],
+            "primary_key": False,
+            "unique": False,
+            "check": False,
+            "index": False,
+            "foreign_key": ("author", "id"),
+        },
+    }
+    table = SnapshotBuilder()._table("book", [], constraints, {}, {}, {}, {})
+    assert len(table.foreign_keys) == 1
+    assert table.indexes == []
+
+
 # -- serializer comments -----------------------------------------------------
 def test_serializer_emits_comments_when_the_backend_has_them():
     table = Table(

@@ -56,6 +56,10 @@ class DoctorReport:
         preset = preset or str(joist_settings.get("doctor.preset", "recommended"))
 
         snapshot = dict(snapshot)
+        # The live vendor even for a fallback snapshot, as the reference does:
+        # the findings are about the alias's real database. The one rule that
+        # reads the replay's SQLite type names (JOIST-INT-003) checks the
+        # snapshot's own ``fallback`` flag for that.
         snapshot["driver"] = self._driver_for(alias)
         snapshot["tables"] = self._select_tables(snapshot.get("tables", []), alias, table)
 
