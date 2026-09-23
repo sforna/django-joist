@@ -56,7 +56,7 @@ row data is never queried or exposed.
 ## Installation
 
 ```bash
-pip install django-joist
+uv add django-joist
 ```
 
 Add the app and mount the dashboard:
@@ -93,10 +93,6 @@ dependency of your project, the way `composer require --dev` would:
 uv add --dev django-joist              # deploy with: uv sync --no-dev
 poetry add --group dev django-joist    # deploy with: poetry install --without dev
 ```
-
-With plain pip, list it in a `dev` group under `[dependency-groups]` in your
-project's `pyproject.toml` (installed only by `pip install --group dev`, pip
-25.1+), or in a `requirements-dev.txt` your deploy never installs.
 
 Unlike Laravel's auto-discovery, Django imports everything named in
 `INSTALLED_APPS` and `urls.py`, so a production build without the package
@@ -237,8 +233,8 @@ reaches the client, the diff, or an export.
 ## Development
 
 ```bash
-pip install -e ".[dev]"
-python -m pytest
+uv sync --extra dev   # creates .venv with the package editable and the test tools
+uv run pytest
 ```
 
 Supported versions are declared once, in `pyproject.toml`, and the CI matrix is
@@ -256,7 +252,7 @@ PostgreSQL, `pymysql[rsa]` for MySQL — `tests/settings.py` registers it as
 `MySQLdb`) and point the run at one:
 
 ```bash
-JOIST_TEST_ENGINE=postgres JOIST_TEST_USER=joist JOIST_TEST_PASSWORD=password python -m pytest
+JOIST_TEST_ENGINE=postgres JOIST_TEST_USER=joist JOIST_TEST_PASSWORD=password uv run pytest
 ```
 
 `JOIST_TEST_HOST`, `JOIST_TEST_PORT`, `JOIST_TEST_DB` and
