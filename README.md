@@ -158,6 +158,7 @@ python manage.py joist_export               # DBML to stdout by default
 python manage.py joist_export --format=json --output=docs/schema.json
 python manage.py joist_export --format=dbml --output=docs/schema.dbml --check  # CI drift check
 python manage.py joist_export --tables=orders,order_lines --focus=orders --depth=1 --compact
+python manage.py joist_mcp                  # serve the MCP server over stdio (for coding agents)
 ```
 
 `joist_doctor --format=json` and `--fail-on=warning` make it a CI gate;
@@ -196,6 +197,28 @@ text = (
 )
 ```
 
+### MCP server
+
+Joist can also serve the same structure over the Model Context Protocol, so an
+agent queries the live schema on demand instead of being handed a paste. Point
+your MCP client at the management command as a stdio server:
+
+```json
+{
+  "mcpServers": {
+    "joist": {"command": "python", "args": ["manage.py", "joist_mcp"]}
+  }
+}
+```
+
+It exposes five read-only tools - `list_tables`, `describe_table`,
+`get_schema`, `focus_table` and `get_structural_review` - plus the
+`joist://schema` resource. Every one rides the same cached,
+exclusion-filtered snapshot as the dashboard, so their `format`, `compact`,
+`focus`, `connection` and annotation behaviour is identical to the CLI. It is
+structure only and adds no dependency: the newline-delimited JSON-RPC stdio
+transport lives in the package itself.
+
 ## Configuration
 
 Everything lives in one `JOIST` dict; unset keys keep their defaults (nested
@@ -226,7 +249,7 @@ it is derived and safe to delete — worth gitignoring alongside `var/`.
 Structure is the `CREATE TABLE` definition: tables, columns (name, native
 type, nullability, defaults), primary keys, indexes, foreign keys with
 referential actions, and native comments. Row contents are never queried —
-not by the dashboard, the API, the CLI, or the doctor. Config
+not by the dashboard, the API, the MCP server, the CLI, or the doctor. Config
 `excluded_tables` are stripped server-side, so an excluded table never
 reaches the client, the diff, or an export.
 
