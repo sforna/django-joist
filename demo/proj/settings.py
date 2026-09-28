@@ -67,11 +67,11 @@ JOIST = {
     "annotations": {
         "notes": ["Synthetic schema for the public demo - no real data, ever."],
         "tables": {
-            "sales_order": "One row per customer order, independent of fulfilment.",
+            "sales_salesorder": "One row per customer order, independent of fulfilment.",
             "inventory_stockitem": "Quantity on hand per warehouse and variant.",
         },
         "columns": {
-            "sales_order.total_cents": "Order total in minor units, before tax.",
+            "sales_salesorder.total_cents": "Order total in minor units, before tax.",
             "inventory_stockitem.reserved": "Held by open orders, not yet shipped.",
         },
     },

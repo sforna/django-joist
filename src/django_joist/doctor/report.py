@@ -42,7 +42,7 @@ class DoctorReport:
         carrying its confidence and category so a client can mark heuristics
         and group without a second lookup.
         """
-        return self._to_array(self._run(alias, snapshot, preset, only, skip, table))
+        return self.to_payload(self._run(alias, snapshot, preset, only, skip, table))
 
     # -- internals ---------------------------------------------------------
     def _run(
@@ -112,8 +112,8 @@ class DoctorReport:
         return overrides
 
     # -- serialization -------------------------------------------------------
-    def _to_array(self, findings: FindingCollection) -> dict[str, Any]:
-        meta = self._rule_metadata()
+    def to_payload(self, findings: FindingCollection) -> dict[str, Any]:
+        meta = rule_metadata()
         return {
             "summary": self._summary(findings),
             "findings": [
@@ -141,14 +141,14 @@ class DoctorReport:
             summary[finding.severity.value] += 1
         return summary
 
-    @staticmethod
-    def _rule_metadata() -> dict[str, dict[str, str]]:
-        """Rule code => confidence and category, read once from the default
-        registry."""
-        return {
-            rule.code: {"confidence": rule.confidence.value, "category": rule.category.value}
-            for rule in RuleRegistry.default().all()
-        }
+def rule_metadata() -> dict[str, dict[str, str]]:
+    """Rule code => confidence and category, read once from the default
+    registry. Shared by every surface that serves findings as JSON, so the
+    CLI, the dashboard endpoint and the MCP server cannot drift apart."""
+    return {
+        rule.code: {"confidence": rule.confidence.value, "category": rule.category.value}
+        for rule in RuleRegistry.default().all()
+    }
 
 
 def findings_for(
