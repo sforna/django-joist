@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- An optional, read-only, structure-only MCP server (`manage.py joist_mcp`),
+  exposing the live schema to coding agents over stdio: the five tools
+  `list_tables`, `describe_table`, `get_schema`, `focus_table` and
+  `get_structural_review`, plus the `joist://schema` resource. Every call rides
+  the same cached, `excluded_tables`-filtered snapshot as the dashboard, the
+  CLI and the export route - structure only, never row data, and never a write.
+  It adds no dependency: the newline-delimited JSON-RPC stdio transport is
+  implemented in the package instead of pulling an MCP SDK (and its web-server
+  stack) into the host project's environment, a deliberate divergence from the
+  reference's SDK-based server.
+
 ### Changed
 
 - Python 3.10 through 3.14 are now supported. `requires-python` drops from
