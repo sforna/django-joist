@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Python 3.10 through 3.14 are now supported. `requires-python` drops from
+  `>=3.13` to `>=3.10`, matching Django 5.2's own floor, and the CI matrix
+  covers every combination Django allows instead of 3.13 and 3.14 alone: 5.2 on
+  all five Pythons, 6.0 and 6.1 on 3.12+, whose four unsupported pairings are
+  excluded. No source change was needed - the code already parses and imports
+  on 3.10. The `Django latest` canary moves from Python 3.13 to 3.14, because on
+  the 3.10 floor a plain `pip install --upgrade Django` resolves back to 5.2,
+  which the matrix already covers.
+
 ## [0.1.2] - 2026-09-23
 
 ### Changed

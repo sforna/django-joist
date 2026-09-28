@@ -20,8 +20,19 @@ jobs:
       # both. The `Django latest` canary is deliberately not repeated - it
       # watches the next Django, and a release should not be blocked by it.
       matrix:
-        python: ["3.13", "3.14"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         django: ["~=5.2.0", "~=6.0.0", "~=6.1.0"]
+        # The same four combinations tests.yml drops: Django 6.0 and 6.1 need
+        # Python 3.12+, so neither reaches the 3.10 or 3.11 floor.
+        exclude:
+          - python: "3.10"
+            django: "~=6.0.0"
+          - python: "3.10"
+            django: "~=6.1.0"
+          - python: "3.11"
+            django: "~=6.0.0"
+          - python: "3.11"
+            django: "~=6.1.0"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
