@@ -3,7 +3,7 @@ redundant. Ported from the reference; per-rule Django notes below."""
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from ..enums import Category, Confidence, Severity
 from ..finding import Finding
@@ -78,10 +78,10 @@ class ForeignKeyWithoutIndex(Rule):
         count = len(columns)
         if (table.get("primary_key") or [])[:count] == columns:
             return True
-        for index in table.get("indexes", []):
-            if (index.get("columns") or [])[:count] == columns:
-                return True
-        return False
+        return any(
+            (index.get("columns") or [])[:count] == columns
+            for index in table.get("indexes", [])
+        )
 
 
 class DuplicateIndex(Rule):

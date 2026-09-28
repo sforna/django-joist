@@ -15,7 +15,6 @@ never touched: this is the package's core promise.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 logger = logging.getLogger("joist")
 

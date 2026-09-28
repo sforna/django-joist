@@ -21,7 +21,7 @@ class Severity(str, Enum):
     def rank(self) -> int:
         return {"error": 3, "warning": 2, "info": 1}[self.value]
 
-    def meets_or_exceeds(self, threshold: "Severity") -> bool:
+    def meets_or_exceeds(self, threshold: Severity) -> bool:
         return self.rank >= threshold.rank
 
 

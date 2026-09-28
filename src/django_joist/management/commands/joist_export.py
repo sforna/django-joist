@@ -20,7 +20,6 @@ from pathlib import Path
 from django.core.management.base import CommandError
 
 from django_joist.cli import JoistCommand
-
 from django_joist.conf import joist_settings
 
 
@@ -109,7 +108,7 @@ class Command(JoistCommand):
         except ValueError as exc:
             # No tables matched / focus root missing (the alias is pre-validated).
             raise CommandError(str(exc), returncode=2) from exc
-        except Exception as exc:  # noqa: BLE001 - a dead database is a runtime error here
+        except Exception as exc:  # a dead database is a runtime error here
             raise CommandError(f"Could not load the schema: {exc}", returncode=2) from exc
 
         # Written to stderr, not stdout: without --output the export itself

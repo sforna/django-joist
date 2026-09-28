@@ -16,6 +16,7 @@ the real alias.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import logging
 from typing import Any
@@ -41,7 +42,7 @@ def replay_migrations_on_sqlite(requested_alias: str, builder) -> dict[str, Any]
         }
 
     fallback_alias = f"{FALLBACK_ALIAS_PREFIX}{requested_alias}"
-    databases = settings.DATABASES
+    databases: dict[str, dict[str, Any]] = settings.DATABASES
     previous = databases.get(fallback_alias)
     databases[fallback_alias] = {
         "ENGINE": "django.db.backends.sqlite3",
@@ -57,10 +58,8 @@ def replay_migrations_on_sqlite(requested_alias: str, builder) -> dict[str, Any]
         "TEST": {},
     }
     # Drop any cached connection object for the alias (per-thread).
-    try:
+    with contextlib.suppress(Exception):  # not created yet
         del connections[fallback_alias]
-    except Exception:  # noqa: BLE001, S110 - not created yet
-        pass
 
     error: str | None = None
     skipped: list[str] = []
@@ -107,7 +106,7 @@ def replay_migrations_on_sqlite(requested_alias: str, builder) -> dict[str, Any]
         try:
             connections[fallback_alias].close()
             del connections[fallback_alias]
-        except Exception:  # noqa: BLE001, S110 - cleanup only
+        except Exception:  # noqa: BLE001 - cleanup only
             pass
         if previous is not None:
             databases[fallback_alias] = previous
@@ -137,8 +136,6 @@ def _replay_per_migration(connection, alias: str) -> list[str]:
         except Exception as exc:  # noqa: BLE001 - graceful per migration
             logger.debug("joist: fallback replay skipped %s.%s: %s", migration.app_label, migration.name, exc)
             skipped.append(f"{migration.app_label}.{migration.name}")
-            try:
-                executor.recorder.add_record(target)
-            except Exception:  # noqa: BLE001, S110
-                pass
+            with contextlib.suppress(Exception):
+                executor.recorder.record_applied(migration.app_label, migration.name)
     return skipped

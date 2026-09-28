@@ -8,7 +8,8 @@ it and no generator ever has to sort. Schema only; row data is never read.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .generators.csv import CsvGenerator
 from .generators.dbml import DbmlGenerator
@@ -53,13 +54,15 @@ class SchemaExporter:
         your way to a table the dashboard hides.
         """
         only = only or []
-        exclude = set(exclude or [])
-        config_excluded = set(config_excluded or [])
+        excluded = set(exclude or [])
+        config_excluded_names = set(config_excluded or [])
 
         selected = [
             t
             for t in tables
-            if (not only or t["name"] in only) and t["name"] not in exclude and t["name"] not in config_excluded
+            if (not only or t["name"] in only)
+            and t["name"] not in excluded
+            and t["name"] not in config_excluded_names
         ]
         return self._order(selected)
 

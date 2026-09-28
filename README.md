@@ -260,6 +260,16 @@ uv sync --extra dev   # creates .venv with the package editable and the test too
 uv run pytest
 ```
 
+Static checks are part of the same extra and run in CI - `mypy` on the shipped
+package against `django-stubs`, and `ruff` for lint (it is not used as a
+formatter). Install the hook to run both before every commit:
+
+```bash
+uv run mypy
+uv run ruff check .
+uv run pre-commit install
+```
+
 Supported versions are declared once, in `pyproject.toml`, and the CI matrix is
 derived from them rather than the other way round: `requires-python` gives the
 Python floor (3.10), the `Framework :: Django :: *` classifiers give the Django

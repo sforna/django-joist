@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 
-__all__ = ["JoistCommand", "CommandError"]
+__all__ = ["CommandError", "JoistCommand"]
 
 
 class JoistCommand(BaseCommand):

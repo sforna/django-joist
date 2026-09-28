@@ -113,7 +113,7 @@ def test_list_tables_reports_the_visible_tables(snapshot):
 def test_list_tables_summarises_each_table(snapshot):
     text = _text(_call("list_tables"))
     book = next(t for t in _visible() if t["name"] == "testapp_book")
-    line = next(l for l in text.splitlines() if l.startswith("testapp_book:"))
+    line = next(line for line in text.splitlines() if line.startswith("testapp_book:"))
     assert line == (
         f"testapp_book: {len(book['columns'])} columns, has PK, "
         f"{len(book['foreign_keys'])} FKs"

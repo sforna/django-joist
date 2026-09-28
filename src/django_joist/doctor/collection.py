@@ -6,7 +6,7 @@ Finding iterables.
 
 from __future__ import annotations
 
-from typing import Iterable, Iterator
+from collections.abc import Iterable, Iterator
 
 from .finding import Finding
 
@@ -15,7 +15,7 @@ class FindingCollection:
     def __init__(self, findings: Iterable[Finding] = ()) -> None:
         self._findings: list[Finding] = list(findings)
 
-    def sorted(self) -> "FindingCollection":
+    def sorted(self) -> FindingCollection:
         """A new collection ordered for reports: most severe first, then
         table name, then rule code, so output is deterministic regardless of
         rule order."""

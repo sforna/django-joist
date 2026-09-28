@@ -60,7 +60,20 @@ class SchemaDiffer:
                 "after": current.get("primary_key", []),
             }
 
-        if not any([cols_added, cols_removed, cols_changed, idx_added, idx_removed, idx_changed, fk_added, fk_removed, fk_changed, changes]):
+        if not any(
+            [
+                cols_added,
+                cols_removed,
+                cols_changed,
+                idx_added,
+                idx_removed,
+                idx_changed,
+                fk_added,
+                fk_removed,
+                fk_changed,
+                changes,
+            ]
+        ):
             return None
 
         return {

@@ -136,7 +136,8 @@ class StaticRule:
 def test_runner_ignore_patterns():
     finding = Finding("JOIST-X-1", Severity.ERROR, "default", "audit_log", "actor_id", "m", "h")
     rules = [StaticRule([finding])]
-    run = lambda ignore: len(DoctorRunner().run(rules, snap([]), "default", ignore=ignore))
+    def run(ignore):
+        return len(DoctorRunner().run(rules, snap([]), "default", ignore=ignore))
     assert run({}) == 1
     assert run({"JOIST-X-1": ["audit_log.*"]}) == 0
     assert run({"JOIST-X-1": ["audit_log.actor_id"]}) == 0
@@ -426,7 +427,15 @@ def test_money_as_float():
 
 
 def test_boolean_as_string():
-    t = table("t", columns=[col("id"), col("is_active", "varchar(6)"), col("has_children", "boolean"), col("issue", "varchar")])
+    t = table(
+        "t",
+        columns=[
+            col("id"),
+            col("is_active", "varchar(6)"),
+            col("has_children", "boolean"),
+            col("issue", "varchar"),
+        ],
+    )
     findings = check(BooleanAsString(), snap([t]))
     assert [f.column for f in findings] == ["is_active"]
 
@@ -529,7 +538,15 @@ def command(monkeypatch):
 
 
 def _opts(**kw):
-    opts = dict(database=None, table=None, only=None, skip=None, preset=None, format="console", fail_on=None)
+    opts = {
+        "database": None,
+        "table": None,
+        "only": None,
+        "skip": None,
+        "preset": None,
+        "format": "console",
+        "fail_on": None,
+    }
     opts.update(kw)
     return opts
 

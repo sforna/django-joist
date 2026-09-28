@@ -4,6 +4,14 @@ Grouped by category rather than one file per rule; every class mirrors a
 reference rule of the same name and code number (with the JOIST- prefix).
 """
 
+from .indexes import (
+    DuplicateIndex,
+    ForeignKeyWithoutIndex,
+    IndexDuplicatingPrimaryKey,
+    MissingUniqueConstraint,
+    RedundantPrefixIndex,
+    UnindexedSoftDelete,
+)
 from .integrity import (
     ForeignKeyPointsAtWrongTable,
     ForeignKeyTypeMismatch,
@@ -13,28 +21,20 @@ from .integrity import (
     PolymorphicWithoutIndex,
 )
 from .types import BooleanAsString, MoneyAsFloat
-from .indexes import (
-    DuplicateIndex,
-    ForeignKeyWithoutIndex,
-    IndexDuplicatingPrimaryKey,
-    MissingUniqueConstraint,
-    RedundantPrefixIndex,
-    UnindexedSoftDelete,
-)
 
 __all__ = [
-    "MissingPrimaryKey",
-    "LikelyMissingForeignKey",
-    "ForeignKeyTypeMismatch",
-    "PivotWithoutUniqueKey",
-    "PolymorphicWithoutIndex",
-    "ForeignKeyPointsAtWrongTable",
-    "ForeignKeyWithoutIndex",
+    "BooleanAsString",
     "DuplicateIndex",
-    "RedundantPrefixIndex",
+    "ForeignKeyPointsAtWrongTable",
+    "ForeignKeyTypeMismatch",
+    "ForeignKeyWithoutIndex",
     "IndexDuplicatingPrimaryKey",
-    "UnindexedSoftDelete",
+    "LikelyMissingForeignKey",
+    "MissingPrimaryKey",
     "MissingUniqueConstraint",
     "MoneyAsFloat",
-    "BooleanAsString",
+    "PivotWithoutUniqueKey",
+    "PolymorphicWithoutIndex",
+    "RedundantPrefixIndex",
+    "UnindexedSoftDelete",
 ]
