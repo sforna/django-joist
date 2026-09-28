@@ -211,6 +211,18 @@ your MCP client at the management command as a stdio server:
 }
 ```
 
+The server must launch from the Django project root with the interpreter that
+can import your settings (for containerised apps, wrap it:
+`docker exec -i <app> python manage.py joist_mcp`). Register it with your
+agent:
+
+| Agent | Command |
+|---|---|
+| Claude Code | `claude mcp add --scope project joist -- python manage.py joist_mcp` |
+| Codex (OpenAI) | `codex mcp add joist -- python manage.py joist_mcp` |
+| pi | add the server to the project's `.mcp.json` (auto-discovered) |
+| VS Code / Cursor | same JSON in `.vscode/mcp.json` / `~/.cursor/mcp.json` |
+
 It exposes five read-only tools - `list_tables`, `describe_table`,
 `get_schema`, `focus_table` and `get_structural_review` - plus the
 `joist://schema` resource. Every one rides the same cached,
