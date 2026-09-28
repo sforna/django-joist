@@ -1,9 +1,8 @@
 """Foundation tests: snapshot shape, serialization, cache behaviour, selection."""
 
 import pytest
-from django.db import connection
-
 from django.core.cache import caches
+from django.db import connection
 
 from django_joist.cache import schema_cache
 from django_joist.selection import excluded_tables_for, without_excluded_tables
@@ -95,8 +94,8 @@ def test_composite_unique_constraint_is_an_index(tables_by_name):
 def test_primary_key_hoisted_out_of_indexes(tables_by_name):
     book = tables_by_name["testapp_book"]
     assert book["primary_key"] == ["id"]
-    assert all(not idx["name"] == "__primary__" for idx in book["indexes"])
-    assert all("id" != idx["columns"][0] or idx["columns"] != ["id"] for idx in book["indexes"])
+    assert all(idx["name"] != "__primary__" for idx in book["indexes"])
+    assert all(idx["columns"][0] != "id" or idx["columns"] != ["id"] for idx in book["indexes"])
 
 
 def test_cache_round_trip_and_freshness(snapshot):

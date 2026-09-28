@@ -15,6 +15,23 @@ permissions:
   contents: read
 
 jobs:
+  # Static checks on the shipped package. Both were added after the fact and
+  # each paid for itself on the first run: mypy caught a `MigrationRecorder`
+  # method that does not exist, in the fallback replay's "fake the failed
+  # migration" path. Run against the newest Python because that is where the
+  # tools' own support lives, not where the package's floor is.
+  lint:
+    runs-on: ubuntu-latest
+    name: mypy + ruff - Python 3.14
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: pip install -e ".[dev]"
+      - run: mypy
+      - run: ruff check .
+
   test:
     runs-on: ubuntu-latest
     strategy:

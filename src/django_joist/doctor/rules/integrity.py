@@ -8,11 +8,12 @@ staying aligned with the reference leaves the door open for shared tooling.
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from ..enums import Category, Confidence, Severity
 from ..finding import Finding
-from .base import Rule, column_type as _column_type, pluralize, table_columns
+from .base import Rule, pluralize, table_columns
+from .base import column_type as _column_type
 
 
 class MissingPrimaryKey(Rule):

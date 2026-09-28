@@ -8,9 +8,8 @@ hide the one problem the user ran it to fix, so a failed store exits non-zero.
 
 from __future__ import annotations
 
-from django_joist.cli import JoistCommand
-
 from django_joist.cache import schema_cache
+from django_joist.cli import JoistCommand
 
 
 class Command(JoistCommand):

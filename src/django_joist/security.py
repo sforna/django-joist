@@ -26,12 +26,13 @@ them because it is part of the view, which cannot be configured away.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable
+from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.http import HttpRequest, Http404
+from django.http import Http404, HttpRequest
 from django.utils.module_loading import import_string
 
 from .conf import joist_settings

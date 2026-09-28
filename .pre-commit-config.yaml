@@ -1,0 +1,24 @@
+# The same checks the `lint` CI job runs, so a commit that would fail CI fails
+# here first. `ruff` fixes what it can; `mypy` runs from the project
+# environment (language: system) because it needs Django, django-stubs and the
+# test settings module, which is not worth rebuilding in an isolated hook env.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: mypy
+        # Its own environment with the stubs, so the hook does not depend on
+        # the developer's venv being active or on `mypy` being on PATH.
+        language: python
+        additional_dependencies:
+          - "mypy"
+          - "django-stubs"
+          - "Django>=5.2"
+        pass_filenames: false

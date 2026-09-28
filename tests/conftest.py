@@ -1,6 +1,5 @@
 """Shared fixtures for the joist test suite."""
 
-import json
 
 import pytest
 from django.core.cache import caches

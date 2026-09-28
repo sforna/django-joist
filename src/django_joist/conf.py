@@ -185,7 +185,7 @@ class JoistSettings:
         return value
 
     def __contains__(self, path: str) -> bool:
-        return self.get(path, missing_marker) is not missing_marker  # noqa: F821
+        return self.get(path, missing_marker) is not missing_marker
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("_"):

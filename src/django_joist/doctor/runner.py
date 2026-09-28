@@ -8,8 +8,8 @@ resolved rule list.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from fnmatch import fnmatch
-from typing import Iterable
 
 from .collection import FindingCollection
 from .enums import Severity

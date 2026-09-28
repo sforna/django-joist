@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stack) into the host project's environment, a deliberate divergence from the
   reference's SDK-based server.
 
+- Static analysis: `mypy` (against `django-stubs`, on the shipped package) and
+  `ruff` are now development dependencies, configured in `pyproject.toml`,
+  enforced by a `lint` CI job and a pre-commit hook.
+
 ### Changed
 
 - Python 3.10 through 3.14 are now supported. `requires-python` drops from
@@ -30,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on 3.10. The `Django latest` canary moves from Python 3.13 to 3.14, because on
   the 3.10 floor a plain `pip install --upgrade Django` resolves back to 5.2,
   which the matrix already covers.
+
+### Fixed
+
+- The SQLite fallback replay's per-migration retry called
+  `MigrationRecorder.add_record`, which does not exist, inside a bare
+  `except: pass`. The "fake the failed migration into history" step therefore
+  never ran, and every migration after a failure was re-attempted and skipped
+  with it. It now calls `record_applied`, and a test fails against the old
+  call. Found by the new `mypy` check on its first run.
 
 ## [0.1.2] - 2026-09-23
 

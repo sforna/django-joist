@@ -176,7 +176,7 @@ class ExportBuilder:
         return annotator.annotate(tables), annotator.notes_list()
 
     def _copy(self, **overrides: Any) -> ExportBuilder:
-        state = {
+        state: dict[str, Any] = {
             "alias": self._alias,
             "only": self._only,
             "exclude": self._exclude,

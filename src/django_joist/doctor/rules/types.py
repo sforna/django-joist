@@ -4,7 +4,7 @@ preset; types are the native full strings the snapshot carries."""
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from ..enums import Category, Confidence, Severity
 from ..finding import Finding

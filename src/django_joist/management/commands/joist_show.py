@@ -5,9 +5,8 @@ the diagram does."""
 
 from __future__ import annotations
 
-from django_joist.cli import JoistCommand
-
 from django_joist.cache import schema_cache
+from django_joist.cli import JoistCommand
 from django_joist.selection import without_excluded_tables
 
 
@@ -44,7 +43,7 @@ class Command(JoistCommand):
         line = f"+{line}+"
 
         def fmt(row):
-            return "| " + " | ".join(str(v).ljust(w) for v, w in zip(row, widths)) + " |"
+            return "| " + " | ".join(str(v).ljust(w) for v, w in zip(row, widths, strict=True)) + " |"
 
         self.stdout.write(line)
         self.stdout.write(fmt(header))

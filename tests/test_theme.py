@@ -58,7 +58,7 @@ def test_dark_only_config_needs_no_plain_root_block():
 
 
 def test_every_knob_paints_its_declared_tokens():
-    colors = {knob: "#123456" for knob in KNOBS}
+    colors = dict.fromkeys(KNOBS, "#123456")
     css = build(colors={"light": colors})
     for knob, tokens in KNOBS.items():
         for token in tokens:

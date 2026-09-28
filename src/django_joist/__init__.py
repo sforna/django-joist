@@ -26,7 +26,7 @@ from __future__ import annotations
 
 __version__ = "0.1.0"
 
-__all__ = ["snapshot", "schema", "SnapshotBuilder", "__version__"]
+__all__ = ["SnapshotBuilder", "__version__", "schema", "snapshot"]
 
 
 def snapshot():

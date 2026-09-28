@@ -23,11 +23,12 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any, Callable, Iterable, TextIO
+from collections.abc import Callable
+from typing import Any, TextIO
 
 from . import __version__
 
-__all__ = ["handle_message", "handle_raw", "run_stdio", "TOOL_NAMES", "RESOURCE_URI"]
+__all__ = ["RESOURCE_URI", "TOOL_NAMES", "handle_message", "handle_raw", "run_stdio"]
 
 #: Protocol revisions this server speaks. ``initialize`` echoes the client's
 #: choice when it is one of these and otherwise answers with the newest, which
@@ -223,13 +224,21 @@ def _tool_definitions() -> list[dict[str, Any]]:
     return [
         {
             "name": "list_tables",
-            "description": "List the database tables, each with a one-line structural summary: column count, whether it has a primary key, and foreign-key count. Structure only, never row data.",
+            "description": (
+                "List the database tables, each with a one-line structural summary: "
+                "column count, whether it has a primary key, and foreign-key count. "
+                "Structure only, never row data."
+            ),
             "inputSchema": {"type": "object", "properties": {"connection": connection}},
             "handler": list_tables,
         },
         {
             "name": "describe_table",
-            "description": "Describe one table: its columns (name, type, nullability, default), primary key, indexes, foreign keys, and any annotations. Structure only, never row data.",
+            "description": (
+                "Describe one table: its columns (name, type, nullability, default), "
+                "primary key, indexes, foreign keys, and any annotations. "
+                "Structure only, never row data."
+            ),
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -242,7 +251,11 @@ def _tool_definitions() -> list[dict[str, Any]]:
         },
         {
             "name": "get_schema",
-            "description": "Get the whole database structure in a chosen format (dbml, json, csv, markdown, mermaid, or llm), optionally compact and limited to specific tables. Structure only, never row data.",
+            "description": (
+                "Get the whole database structure in a chosen format (dbml, json, csv, "
+                "markdown, mermaid, or llm), optionally compact and limited to specific "
+                "tables. Structure only, never row data."
+            ),
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -263,14 +276,21 @@ def _tool_definitions() -> list[dict[str, Any]]:
         },
         {
             "name": "focus_table",
-            "description": "Get one table and its foreign-key neighbourhood (out to a given depth) in a chosen format. Useful for grounding on a slice of the schema. Structure only, never row data.",
+            "description": (
+                "Get one table and its foreign-key neighbourhood (out to a given depth) "
+                "in a chosen format. Useful for grounding on a slice of the schema. "
+                "Structure only, never row data."
+            ),
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "table": {"type": "string", "description": "The table at the centre of the neighbourhood."},
                     "depth": {
                         "type": "integer",
-                        "description": "How many foreign-key hops of neighbours to include. Defaults to JOIST['focus']['default_depth'].",
+                        "description": (
+                            "How many foreign-key hops of neighbours to include. "
+                            "Defaults to JOIST['focus']['default_depth']."
+                        ),
                     },
                     "format": formats,
                     "connection": connection,
@@ -281,7 +301,12 @@ def _tool_definitions() -> list[dict[str, Any]]:
         },
         {
             "name": "get_structural_review",
-            "description": "Run the deterministic structural review: problems visible from structure alone, such as a table with no primary key or an unindexed foreign key. Returns a severity summary and the findings. Structure only, no row data.",
+            "description": (
+                "Run the deterministic structural review: problems visible from "
+                "structure alone, such as a table with no primary key or an unindexed "
+                "foreign key. Returns a severity summary and the findings. "
+                "Structure only, no row data."
+            ),
             "inputSchema": {"type": "object", "properties": {"connection": connection}},
             "handler": get_structural_review,
         },
@@ -349,7 +374,10 @@ def _list_resources(_params: dict[str, Any]) -> dict[str, Any]:
             {
                 "uri": RESOURCE_URI,
                 "name": "Database structure",
-                "description": "The whole database structure (tables, columns, keys, and annotations) as one compact, structure-only document.",
+                "description": (
+                    "The whole database structure (tables, columns, keys, and "
+                    "annotations) as one compact, structure-only document."
+                ),
                 "mimeType": _resource_mime(),
             }
         ]

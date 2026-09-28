@@ -9,12 +9,13 @@ environment.
 
 from __future__ import annotations
 
+import contextlib
 import subprocess
 import sys
 
-from django_joist.cli import JoistCommand
 from django.urls import NoReverseMatch, reverse
 
+from django_joist.cli import JoistCommand
 from django_joist.conf import joist_settings
 
 
@@ -49,8 +50,7 @@ class Command(JoistCommand):
             "darwin": ["open", url],
             "win32": ["cmd", "/c", "start", "", url],
         }.get(sys.platform, ["xdg-open", url])
-        try:
+        with contextlib.suppress(OSError, subprocess.SubprocessError):
+            # Headless host: the printed URL is the product.
             subprocess.run(opener, check=False, timeout=10, capture_output=True)
-        except (OSError, subprocess.SubprocessError):
-            pass  # headless host: the printed URL is the product
         return 0

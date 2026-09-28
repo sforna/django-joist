@@ -17,11 +17,9 @@ tests/testapp/migrations/0002_backend_structure.py.
 import os
 
 import pytest
-from django.db import connection
-
-import django_joist
 from django.db import connection, connections
 
+import django_joist
 from django_joist.cache import schema_cache
 from django_joist.doctor import findings_for
 
@@ -159,7 +157,14 @@ def test_the_recommended_preset_keeps_only_the_high_confidence_findings():
     # only the raw-DDL bait and Django's own index layout remain.
     snapshot = schema_cache().rebuild("default")
     codes = {f.code for f in findings_for("default", snapshot) if f.table.startswith("testapp_")}
-    assert not codes & {"JOIST-INT-002", "JOIST-INT-009", "JOIST-IDX-005", "JOIST-IDX-006", "JOIST-TYP-001", "JOIST-TYP-002"}
+    assert not codes & {
+        "JOIST-INT-002",
+        "JOIST-INT-009",
+        "JOIST-IDX-005",
+        "JOIST-IDX-006",
+        "JOIST-TYP-001",
+        "JOIST-TYP-002",
+    }
     assert "JOIST-INT-001" in codes
 
 

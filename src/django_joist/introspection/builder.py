@@ -23,7 +23,7 @@ from typing import Any
 from django.db import connections
 
 from .data import Column, ForeignKey, Index, Table
-from .native import native_column_types, native_column_comments, native_fk_actions, native_table_comments
+from .native import native_column_comments, native_column_types, native_fk_actions, native_table_comments
 from .serializer import SchemaSerializer
 
 logger = logging.getLogger("joist")
@@ -65,7 +65,7 @@ class SnapshotBuilder:
                 "skipped_migrations": [],
                 "tables": self.serializer.tables(tables),
             }
-        except Exception as exc:  # noqa: BLE001 - connectivity check, see docstring
+        except Exception as exc:
             if not self._is_connectivity_error(exc):
                 raise
             from .fallback import replay_migrations_on_sqlite
@@ -201,7 +201,9 @@ class SnapshotBuilder:
         either a (table, column) pair or a (table, [columns]) pair. Normalize."""
         if isinstance(refs, dict):  # future-shaped named dict
             return refs.get("related_table") or refs.get("table"), tuple(
-                refs.get("related_columns") or refs.get("columns") or ([refs["related_column"]] if "related_column" in refs else [])
+                refs.get("related_columns")
+                or refs.get("columns")
+                or ([refs["related_column"]] if "related_column" in refs else [])
             )
         if isinstance(refs, (list, tuple)) and len(refs) == 2:
             table, cols = refs

@@ -11,7 +11,8 @@ Structure only: it works on the schema snapshot and never touches row data.
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from ..conf import joist_settings
 from ..selection import excluded_tables_for

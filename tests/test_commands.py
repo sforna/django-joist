@@ -58,7 +58,7 @@ def _visible(alias="default"):
 def _rows(out):
     """The table-name cell of every data row of the rendered ``joist_show`` table."""
     lines = out.splitlines()
-    body = lines[lines.index(next(l for l in lines if l.startswith("| Table"))) + 1 :]
+    body = lines[lines.index(next(line for line in lines if line.startswith("| Table"))) + 1 :]
     return [line.split("|")[1].strip() for line in body if line.startswith("|")]
 
 

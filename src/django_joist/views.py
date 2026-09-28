@@ -28,14 +28,14 @@ from pathlib import Path
 from typing import Any
 
 from django.conf import settings
-from django.http import FileResponse, HttpRequest, Http404, HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 
 from .cache import schema_cache
 from .conf import joist_settings
 from .security import joist_protected
-from .selection import excluded_tables_for, without_excluded_tables
+from .selection import without_excluded_tables
 from .theme import ThemeStylesheet
 
 #: Public asset name -> path relative to the package's static/joist dir.
@@ -206,7 +206,7 @@ def theme_css(request: HttpRequest) -> HttpResponse:
 
 
 @joist_protected
-def asset(request: HttpRequest, file: str) -> HttpResponse:
+def asset(request: HttpRequest, file: str) -> HttpResponseBase:
     """Serve a dashboard asset from the package. Allow-listed by basename -
     only known names map to paths, which makes traversal impossible - and
     gated with everything else."""

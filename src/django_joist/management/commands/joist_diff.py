@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from django_joist.cli import JoistCommand
-
 from django_joist.conf import joist_settings
 
 

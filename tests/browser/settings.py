@@ -8,7 +8,7 @@ throwaway files under ``tests/browser/.state/``, recreated on every server start
 import os
 from pathlib import Path
 
-from tests.settings import *  # noqa: F401,F403
+from tests.settings import *  # noqa: F403
 
 STATE = Path(os.environ.get("JOIST_BROWSER_STATE", Path(__file__).resolve().parent / ".state"))
 

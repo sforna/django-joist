@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, replace
-from typing import Optional
 
 from .enums import Severity
 
@@ -22,10 +21,10 @@ class Finding:
     severity: Severity
     connection: str
     table: str
-    column: Optional[str]  # or an index / constraint name, or None
+    column: str | None  # or an index / constraint name, or None
     message: str
     hint: str
-    suggestion: Optional[str] = None
+    suggestion: str | None = None
 
     def fingerprint(self) -> str:
         """A stable identity for suppression. Built from code, connection,
@@ -37,7 +36,7 @@ class Finding:
         raw = "|".join([self.code, self.connection, self.table, self.column or ""])
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    def with_severity(self, severity: Severity) -> "Finding":
+    def with_severity(self, severity: Severity) -> Finding:
         """A copy at a different severity, for the runner's per-rule
         overrides. Every other field, and therefore the fingerprint, is
         unchanged."""

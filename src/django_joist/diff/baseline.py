@@ -18,11 +18,13 @@ missing baseline is an empty diff, and that is what every failure degrades to.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from django.conf import settings
 
@@ -68,10 +70,8 @@ class BaselineStore:
 
     def forget(self, alias: str) -> bool:
         def op() -> bool:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 self.path(alias).unlink()
-            except FileNotFoundError:
-                pass
             return True
 
         return self._attempt(op, False)

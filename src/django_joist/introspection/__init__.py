@@ -4,11 +4,11 @@ from .serializer import SchemaSerializer
 
 __all__ = [
     "FALLBACK_ALIAS_PREFIX",
-    "SnapshotBuilder",
-    "SnapshotError",
     "Column",
     "ForeignKey",
     "Index",
-    "Table",
     "SchemaSerializer",
+    "SnapshotBuilder",
+    "SnapshotError",
+    "Table",
 ]

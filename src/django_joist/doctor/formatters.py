@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import textwrap
+from typing import Any
 
 from .collection import FindingCollection
 from .finding import Finding
@@ -70,7 +71,7 @@ class JsonFormatter:
 
     def format(self, findings: FindingCollection) -> str:
         summary = {"total": len(findings), "error": 0, "warning": 0, "info": 0}
-        payload = {
+        payload: dict[str, Any] = {
             "findings": [],
             "summary": summary,
         }

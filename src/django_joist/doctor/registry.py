@@ -7,7 +7,7 @@ and ignore patterns are the runner's job, not the registry's.
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from .enums import Confidence
 from .rules import (
@@ -34,7 +34,7 @@ class RuleRegistry:
         self._rules = list(rules)
 
     @classmethod
-    def default(cls) -> "RuleRegistry":
+    def default(cls) -> RuleRegistry:
         """The shipped rule set, in code order."""
         return cls(
             MissingPrimaryKey(),

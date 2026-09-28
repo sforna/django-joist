@@ -24,7 +24,11 @@ class Command(JoistCommand):
     def add_arguments(self, parser):
         parser.add_argument("--database", default=None, help="Review this alias instead of the default.")
         parser.add_argument("--table", default=None, help="Review only this table.")
-        parser.add_argument("--only", default=None, help="Only these categories, comma-separated (integrity,index,type).")
+        parser.add_argument(
+            "--only",
+            default=None,
+            help="Only these categories, comma-separated (integrity,index,type).",
+        )
         parser.add_argument("--skip", default=None, help="Skip these categories, comma-separated.")
         parser.add_argument("--preset", default=None, help="recommended, strict, or none (defaults to config).")
         parser.add_argument("--format", default="console", help="console or json.")

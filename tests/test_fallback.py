@@ -154,26 +154,28 @@ def test_fallback_retries_per_migration_when_the_run_aborts(monkeypatch, django_
 
     monkeypatch.setattr("django.core.management.call_command", exploding_migrate)
 
-    original = MigrationExecutor.migrate
-    failed_once = []
+    original = MigrationExecutor.apply_migration
+    failed = ("contenttypes", "0001_initial")
 
-    def migrate(self, targets, *args, **kwargs):
-        # Fail the first migration only: the rest must still replay, and the
-        # failed one must be recorded instead of taking the snapshot down.
-        if not failed_once:
-            failed_once.append(targets)
+    def apply_migration(self, state, migration, fake=False, fake_initial=False):
+        # Fail the *same* migration every time it is attempted, not once: only
+        # the faked record lets a later fresh executor skip it. Without that
+        # record every target after it replays the dependency and fails too.
+        if (migration.app_label, migration.name) == failed:
             raise RuntimeError("unsupported on SQLite")
-        return original(self, targets, *args, **kwargs)
+        return original(self, state, migration, fake=fake, fake_initial=fake_initial)
 
-    monkeypatch.setattr(MigrationExecutor, "migrate", migrate)
+    monkeypatch.setattr(MigrationExecutor, "apply_migration", apply_migration)
 
     with django_db_blocker.unblock():
         snapshot = replay_migrations_on_sqlite("ghost", SnapshotBuilder())
     assert snapshot["fallback"] is True
     assert snapshot["fallback_error"] == "one migration is not SQLite compatible"
-    # Only the migration that actually failed is recorded: the run continued
-    # from there instead of re-applying what the fresh executor already knew.
-    assert snapshot["skipped_migrations"] == ["contenttypes.0001_initial"]
+    # The failed migration is faked into the throwaway history, so the run
+    # continues from it: reported first, and the project's own schema still
+    # gets built. If the faking silently did nothing, every later target would
+    # replay the dependency and fail with it, and testapp would come back empty.
+    assert snapshot["skipped_migrations"][0] == "contenttypes.0001_initial"
     assert "testapp_book" in [t["name"] for t in snapshot["tables"]]
 
 
