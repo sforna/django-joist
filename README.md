@@ -77,7 +77,7 @@ urlpatterns = [
 ]
 ```
 
-Requires Python 3.13+ and Django 5.2+. No migrations, no models, no
+Requires Python 3.10+ and Django 5.2+. No migrations, no models, no
 `collectstatic` needed (assets are served by the package, gated with the
 rest of the dashboard). The dashboard HTML is a template shipped inside the
 app, so your `TEMPLATES` must keep `"APP_DIRS": True` for `django_joist`
@@ -239,12 +239,13 @@ uv run pytest
 
 Supported versions are declared once, in `pyproject.toml`, and the CI matrix is
 derived from them rather than the other way round: `requires-python` gives the
-Python floor, the `Framework :: Django :: *` classifiers give the Django list,
-and every combination of the two runs. Because `Django>=5.2` carries no ceiling,
-the newest Django release is additionally tested in its own job, so a new Django
-is caught here instead of by users — a version added to the metadata belongs in
-`.github/workflows/tests.yml` (and in `release.yml`, which repeats the matrix to
-gate a tag) in the same commit.
+Python floor (3.10), the `Framework :: Django :: *` classifiers give the Django
+list, and every combination of the two that Django itself supports runs — all
+five Pythons on 5.2, only 3.12+ on 6.0 and 6.1. Because `Django>=5.2` carries no
+ceiling, the newest Django release is additionally tested in its own job, so a
+new Django is caught here instead of by users — a version added to the metadata
+belongs in `.github/workflows/tests.yml` (and in `release.yml`, which repeats
+the matrix to gate a tag) in the same commit.
 
 The suite runs on SQLite by default. The PostgreSQL and MySQL lanes are the
 same suite against a real server: install the driver (`psycopg[binary]` for
