@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-28
+
 ### Added
 
 - An optional, read-only, structure-only MCP server (`manage.py joist_mcp`),
@@ -43,6 +45,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   never ran, and every migration after a failure was re-attempted and skipped
   with it. It now calls `record_applied`, and a test fails against the old
   call. Found by the new `mypy` check on its first run.
+
+- `manage.py joist_doctor --format=json` dropped each finding's `confidence`
+  and `category`, although `/joist/api/schema` and the MCP server serve them:
+  `report.py` claimed all three surfaces shared that one contract, and only the
+  HTTP shape was pinned by a test. The CLI now serializes
+  `DoctorReport.to_payload` itself, so the three cannot drift apart again, and
+  a test asserts the CLI emits that payload byte for byte.
+
+- The demo's `JOIST["annotations"]` named the `sales_order` table and
+  `sales_order.total_cents`. The annotator matches the physical table name, and
+  the model's is `sales_salesorder`, so neither annotation ever resolved and
+  the static showcase shipped without them.
+
+- `django_joist.__version__` was still `0.1.0` while the distribution was
+  `0.1.2`; the MCP handshake advertises it as `serverInfo.version`. A test now
+  holds it to the installed distribution's metadata, so a bumped
+  `pyproject.toml` with an unchanged module fails instead of shipping.
 
 ## [0.1.2] - 2026-09-23
 
@@ -161,7 +180,8 @@ Initial release.
 - Excluded tables are filtered server-side, so their structure never reaches
   the browser.
 
-[Unreleased]: https://github.com/sforna/django-joist/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/sforna/django-joist/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/sforna/django-joist/releases/tag/v0.2.0
 [0.1.2]: https://github.com/sforna/django-joist/releases/tag/v0.1.2
 [0.1.1]: https://github.com/sforna/django-joist/releases/tag/v0.1.1
 [0.1.0]: https://github.com/sforna/django-joist/releases/tag/v0.1.0

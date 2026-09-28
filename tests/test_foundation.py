@@ -158,3 +158,15 @@ def test_a_named_cache_backend_is_honoured(settings, settings_overrides):
     assert cache.last_error is None
     assert caches["joist-own"].get(key)["generated_at"] == fresh["generated_at"]
     assert caches["default"].get(key) is None  # the write went to the named store only
+
+
+def test_the_public_version_matches_the_distribution():
+    """The MCP handshake advertises ``__version__`` as ``serverInfo.version``,
+    and it drifted once already (0.1.0 while the distribution was 0.1.2).
+    Distribution metadata is built from ``pyproject.toml``, so a bump there
+    that skips the module fails here instead of shipping a lie."""
+    from importlib.metadata import version
+
+    import django_joist
+
+    assert django_joist.__version__ == version("django-joist")
