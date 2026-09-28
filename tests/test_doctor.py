@@ -513,6 +513,18 @@ def test_findings_for_returns_collection():
     assert len(collection) == 1
 
 
+def test_the_cli_json_is_the_shared_payload():
+    """`joist_doctor --format=json`, the dashboard endpoint and the MCP server
+    all serve DoctorReport's payload: one shape, no drift."""
+    from django_joist.doctor.formatters import JsonFormatter
+
+    snapshot = {"connection": "default", "tables": [table("logs", pk=[])]}
+    collection = findings_for("default", snapshot, preset="strict")
+    payload = DoctorReport().to_payload(collection)
+    assert json.loads(JsonFormatter().format(collection)) == payload
+    assert {"confidence", "category"} <= set(payload["findings"][0])
+
+
 # -- command ------------------------------------------------------------
 class FakeCache:
     def __init__(self, snapshot, last_error=None):

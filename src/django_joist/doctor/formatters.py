@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import json
 import textwrap
-from typing import Any
 
 from .collection import FindingCollection
 from .finding import Finding
@@ -66,28 +65,11 @@ class ConsoleFormatter:
 
 
 class JsonFormatter:
-    """Structured JSON for tooling and CI: every finding with its
-    fingerprint, plus a severity summary."""
+    """Structured JSON for tooling and CI: the exact payload the dashboard's
+    schema endpoint and the MCP server serve, so a client reads any of them
+    without a second shape to understand."""
 
     def format(self, findings: FindingCollection) -> str:
-        summary = {"total": len(findings), "error": 0, "warning": 0, "info": 0}
-        payload: dict[str, Any] = {
-            "findings": [],
-            "summary": summary,
-        }
-        for finding in findings.all():
-            summary[finding.severity.value] += 1
-            payload["findings"].append(
-                {
-                    "code": finding.code,
-                    "severity": finding.severity.value,
-                    "connection": finding.connection,
-                    "table": finding.table,
-                    "column": finding.column,
-                    "message": finding.message,
-                    "hint": finding.hint,
-                    "suggestion": finding.suggestion,
-                    "fingerprint": finding.fingerprint(),
-                }
-            )
-        return json.dumps(payload, indent=4) + "\n"
+        from .report import DoctorReport
+
+        return json.dumps(DoctorReport().to_payload(findings), indent=4) + "\n"
