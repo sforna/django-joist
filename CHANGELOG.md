@@ -33,17 +33,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   snapshot cache is empty or expired. It records a new baseline only when the
   structure changes, so a no-op `migrate` or `flush` preserves the previous
   diff. Migrations on an unmanaged alias no longer refresh managed aliases.
+- The PostgreSQL and MySQL isolation test now registers both database aliases
+  with Joist, matching the managed-connection rule enforced by the package.
 
 ## [0.2.0] - 2026-09-28
 
 ### Added
 
-- An optional, read-only, structure-only MCP server (`manage.py joist_mcp`),
+- An optional MCP server with structure-only responses (`manage.py joist_mcp`),
   exposing the live schema to coding agents over stdio: the five tools
   `list_tables`, `describe_table`, `get_schema`, `focus_table` and
   `get_structural_review`, plus the `joist://schema` resource. Every call rides
   the same cached, `excluded_tables`-filtered snapshot as the dashboard, the
-  CLI and the export route - structure only, never row data, and never a write.
+  CLI and the export route. Responses contain only structure; the SQLite
+  fallback could execute project migrations when a database was unavailable.
   It adds no dependency: the newline-delimited JSON-RPC stdio transport is
   implemented in the package instead of pulling an MCP SDK (and its web-server
   stack) into the host project's environment, a deliberate divergence from the
