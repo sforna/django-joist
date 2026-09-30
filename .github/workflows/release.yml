@@ -42,6 +42,19 @@ jobs:
       - run: pip install -e .
       - run: python -m pytest -q
 
+  coverage:
+    runs-on: ubuntu-latest
+    name: Coverage - Python 3.14 - Django 6.1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: pip install "Django~=6.1.0" pytest pytest-django coverage
+      - run: pip install -e .
+      - run: python -m coverage run -m pytest -q
+      - run: python -m coverage report
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -64,7 +77,7 @@ jobs:
           path: dist/
 
   publish:
-    needs: [test, build]
+    needs: [test, coverage, build]
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

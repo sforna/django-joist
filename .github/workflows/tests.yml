@@ -68,6 +68,19 @@ jobs:
       - run: pip install -e .
       - run: python -m pytest -q
 
+  coverage:
+    runs-on: ubuntu-latest
+    name: Coverage - Python 3.14 - Django 6.1
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - run: pip install "Django~=6.1.0" pytest pytest-django coverage
+      - run: pip install -e .
+      - run: python -m coverage run -m pytest -q
+      - run: python -m coverage report
+
   # The requirement is `Django>=5.2`, with no ceiling, so the newest release is
   # part of the range the package declares and is tested on its own rather than
   # only when someone remembers to add it to the matrix above. Pinned to the

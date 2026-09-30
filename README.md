@@ -337,7 +337,12 @@ reaches the client, the diff, or an export.
 ```bash
 uv sync --extra dev   # creates .venv with the package editable and the test tools
 uv run pytest
+uv run coverage run -m pytest -q
+uv run coverage report
 ```
+
+CI enforces at least 95% Python line coverage for the shipped package on
+Python 3.14 and Django 6.1. The same check gates a release tag.
 
 Static checks are part of the same extra and run in CI - `mypy` on the shipped
 package against `django-stubs`, and `ruff` for lint (it is not used as a

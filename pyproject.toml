@@ -48,7 +48,7 @@ classifiers = [
 dependencies = ["Django>=5.2"]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-django", "mypy", "django-stubs", "ruff", "pre-commit"]
+dev = ["pytest", "pytest-django", "coverage", "mypy", "django-stubs", "ruff", "pre-commit"]
 
 [project.urls]
 Homepage = "https://github.com/sforna/django-joist"
@@ -61,6 +61,12 @@ packages = ["src/django_joist"]
 DJANGO_SETTINGS_MODULE = "tests.settings"
 pythonpath = ["src", "."]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["django_joist"]
+
+[tool.coverage.report]
+fail_under = 95
 
 [tool.mypy]
 python_version = "3.10"
