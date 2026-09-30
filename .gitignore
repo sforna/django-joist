@@ -10,6 +10,9 @@ dist/
 .venv/
 venv/
 
+# uv lockfile: this is a library, its dependency ranges live in pyproject.toml
+uv.lock
+
 # Tooling caches
 .pytest_cache/
 .ruff_cache/
