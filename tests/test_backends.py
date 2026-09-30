@@ -219,10 +219,11 @@ def test_configured_annotations_win_over_the_catalog(settings_overrides):
 # -- isolation ---------------------------------------------------------------
 @native
 @pytest.mark.django_db(databases=["default", "secondary"])
-def test_each_alias_reads_only_its_own_database():
+def test_each_alias_reads_only_its_own_database(settings_overrides):
     # Two databases on one server: the secondary alias holds a table the
     # default one must never see, so a snapshot keyed by the wrong connection
     # (or an introspection that ignores the selected database) shows up here.
+    settings_overrides("connections", {"default": {}, "secondary": {}})
     other = "joist_secondary_only"
     with connections["secondary"].cursor() as cur:
         cur.execute(f"CREATE TABLE {other} (id integer)")
