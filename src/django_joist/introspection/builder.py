@@ -68,6 +68,10 @@ class SnapshotBuilder:
         except Exception as exc:
             if not self._is_connectivity_error(exc):
                 raise
+            from ..conf import joist_settings
+
+            if not joist_settings.get("fallback.enabled", False):
+                raise
             from .fallback import replay_migrations_on_sqlite
 
             return replay_migrations_on_sqlite(alias, self)

@@ -1,20 +1,9 @@
-"""post_migrate receiver: rebuild the cached snapshot after migrations.
+"""Refresh a managed schema after migrate and record real structural changes.
 
-The counterpart of Laravel Truss's ``RebuildOnMigrationsEnded`` listener, with
-one Django wrinkle: there is no single "migrations ended" signal - Django
-sends ``pre_migrate`` and ``post_migrate`` *once per app* around a migrate
-run. So we debounce per alias: the first ``post_migrate`` of a run refreshes,
-the rest of that run's firings are no-ops, and the next ``pre_migrate`` for
-the alias re-arms the listener.
-
-The same two rules hold:
-
-* it never throws: an exception here would take down ``manage.py migrate``
-  on a migration that already succeeded;
-* before overwriting the cache, the currently cached snapshot is captured as
-  the schema-diff baseline - this is the one place that knows a migration
-  just ran, and the cache is the only remaining source of the previous
-  schema once the migration has completed.
+Django sends pre_migrate and post_migrate once per app, and post_migrate also
+runs for flush and migrations with no operations. A pending snapshot per alias
+lets us read the live structure once before migrations, refresh once after,
+and leave the last diff alone when the structure did not change.
 """
 
 from __future__ import annotations
@@ -29,14 +18,36 @@ from .introspection.builder import FALLBACK_ALIAS_PREFIX
 
 logger = logging.getLogger("joist")
 
-#: Aliases refreshed since the last pre_migrate - cleared per run (see above).
-_refreshed: set[str] = set()
+# A None value means the pre-migration schema could not be captured (or diff
+# is off). Presence still marks a migrate run and debounces per-app signals.
+_pending: dict[str, dict | None] = {}
 
 
 @receiver(pre_migrate, dispatch_uid="joist.rearm_after_migrate")
 def rearm_after_migrate(sender, **kwargs):
-    alias = kwargs.get("using") or "default"
-    _refreshed.discard(str(alias))
+    from .cache import schema_cache
+
+    if not joist_settings.get("enabled"):
+        return
+
+    alias = str(kwargs.get("using") or "default")
+    if alias.startswith(FALLBACK_ALIAS_PREFIX) or alias in _pending:
+        return
+
+    cache = schema_cache()
+    if alias not in cache.managed_aliases():
+        return
+
+    _pending[alias] = None
+    if joist_settings.get("diff.enabled", True):
+        try:
+            # Read the actual pre-migration schema. A cached snapshot may have
+            # expired or may be stale after a manual database change.
+            before = cache.rebuild(alias)
+            if not before.get("fallback_error"):
+                _pending[alias] = before
+        except Exception as exc:  # noqa: BLE001 - Joist must not stop migrate
+            logger.warning("joist: could not capture schema before migration for [%s]: %s", alias, exc)
 
 
 @receiver(post_migrate, dispatch_uid="joist.rebuild_after_migrate")
@@ -47,35 +58,28 @@ def rebuild_after_migrate(sender, **kwargs):
         return
 
     alias = str(kwargs.get("using") or "default")
-    if alias.startswith(FALLBACK_ALIAS_PREFIX):
-        return  # never cache the throwaway fallback schema
-    if alias in _refreshed:
-        return
-    _refreshed.add(alias)
+    if alias not in _pending:
+        return  # flush, unmanaged alias, or a later per-app signal
+    before = _pending.pop(alias)
 
     cache = schema_cache()
-    aliases = [alias] if alias in cache.managed_aliases() else cache.managed_aliases()
-    capture_baseline = bool(joist_settings.get("diff.enabled", True))
+    try:
+        after = cache.rebuild(alias)
+        if before is not None and not after.get("fallback_error"):
+            from .diff.baseline import BaselineStore
+            from .diff.differ import SchemaDiffer
 
-    for name in aliases:
-        try:
-            _refresh(cache, name, capture_baseline)
-        except Exception as exc:  # noqa: BLE001 - migrate must never fail because of Joist
-            logger.warning("joist: post-migration refresh failed for [%s]: %s", name, exc)
-
-
-def _refresh(cache, alias: str, capture_baseline: bool) -> None:
-    if capture_baseline:
-        try:
-            previous = cache.peek(alias)
-            if previous is not None:
-                from .diff.baseline import BaselineStore
-
-                BaselineStore().save(alias, previous)
-        except Exception as exc:  # noqa: BLE001 - the baseline serves one feature; rebuild must go on
-            logger.warning("joist: could not capture diff baseline for [%s]: %s", alias, exc)
-
-    cache.rebuild(alias)
+            if SchemaDiffer().diff(before, after)["has_changes"]:
+                baselines = BaselineStore()
+                if not baselines.save(alias, before):
+                    logger.warning(
+                        "joist: could not capture diff baseline for [%s]: %s",
+                        alias,
+                        baselines.last_error,
+                    )
+    except Exception as exc:  # noqa: BLE001 - Joist must not stop migrate
+        logger.warning("joist: post-migration refresh failed for [%s]: %s", alias, exc)
+        return
 
     if cache.last_error:
         logger.warning(

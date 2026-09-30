@@ -1,11 +1,11 @@
-"""The optional read-only, structure-only MCP server.
+"""The optional MCP server for structure-only schema responses.
 
 Exposes the live database structure to a coding agent over the Model Context
 Protocol, so the agent queries the current schema on demand instead of being
 handed a stale paste. Five tools and one resource, all riding the same cached,
 exclusion-filtered snapshot the dashboard, the CLI and the export route read -
-no separate introspection, no second source of truth. Structure only, never
-row data; every call is read-only.
+no separate introspection, no second source of truth. With the default
+settings, every call reads only structure and never touches row data.
 
 The server is deliberately dependency-free: MCP over stdio is newline-
 delimited JSON-RPC 2.0, a surface small enough to implement here rather than
@@ -41,10 +41,11 @@ RESOURCE_URI = "joist://schema"
 INSTRUCTIONS = """\
 Joist exposes this Django application's live database structure: tables,
 columns, indexes, and foreign keys, plus any annotations the maintainers
-declared. It is structure only and read only: it never returns row data, never
-writes, and never runs a query you supply. It describes what exists, not what
-the data means beyond the annotations. Use it to ground your work in the real
-schema instead of guessing column and table names.
+declared. Its responses contain structure, not row data, and it never runs a
+query you supply. With the default settings, it only reads database metadata.
+If the project enabled migration fallback, a connection failure can cause
+project migrations to run. Use the schema to ground your work instead of
+guessing column and table names.
 """
 
 
@@ -99,25 +100,22 @@ def _builder(connection: str | None):
     from .export.builder import ExportBuilder
 
     cache = schema_cache()
-    if connection is not None and connection not in cache.managed_aliases():
-        raise ToolError(
-            f"Connection [{connection}] is not managed by Joist. "
-            "Add it under JOIST['connections']."
-        )
-    builder = ExportBuilder(cache=cache)
-    return builder.connection(connection) if connection is not None else builder
+    try:
+        alias = cache.resolve(connection)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+    return ExportBuilder(cache=cache).connection(alias)
 
 
 def _snapshot(connection: str | None) -> dict[str, Any]:
     from .cache import schema_cache
 
     cache = schema_cache()
-    if connection is not None and connection not in cache.managed_aliases():
-        raise ToolError(
-            f"Connection [{connection}] is not managed by Joist. "
-            "Add it under JOIST['connections']."
-        )
-    return cache.get(connection)
+    try:
+        alias = cache.resolve(connection)
+    except ValueError as exc:
+        raise ToolError(str(exc)) from exc
+    return cache.get(alias)
 
 
 # -- tools -------------------------------------------------------------------

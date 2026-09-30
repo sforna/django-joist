@@ -17,7 +17,7 @@ class Command(JoistCommand):
             "--database",
             dest="database",
             default=None,
-            help="Diff this database alias instead of the default.",
+            help="Diff this database alias instead of the first managed alias.",
         )
         parser.add_argument(
             "--json",
@@ -40,7 +40,11 @@ class Command(JoistCommand):
             return 0
 
         cache = schema_cache()
-        current = cache.get(options["database"])
+        try:
+            current = cache.get(options["database"])
+        except ValueError as exc:
+            self.stderr.write(str(exc))
+            return 2
         if cache.last_error:
             self.stdout.write(
                 self.style.WARNING(f"Cache unavailable ({cache.last_error}); snapshot built live.")
@@ -63,7 +67,7 @@ class Command(JoistCommand):
                 )
                 return 0
             self.stdout.write(self.style.WARNING(f"No baseline recorded for [{alias}] yet."))
-            self.stdout.write("A baseline is captured on the next migration while Joist is enabled.")
+            self.stdout.write("A baseline is captured on the next structural migration while Joist is enabled.")
             return 0
 
         diff = SchemaDiffer().diff(baseline, current)

@@ -32,8 +32,9 @@ DEFAULTS: dict[str, Any] = {
     "connections": {},
     # ---- Degraded mode: when a connection is unreachable, replay the project's
     # migrations on a throwaway in-memory SQLite database and introspect that
-    # instead. The result is flagged, never passed off as the live schema.
-    "fallback": {"enabled": True},
+    # instead. Migrations can execute arbitrary project code, so this is
+    # explicitly opt-in and must not run during ordinary schema reads.
+    "fallback": {"enabled": False},
     # ---- Tables hidden from diagram and API, applied server-side (they never
     # reach the browser). Django's own bookkeeping tables are noise by default.
     "excluded_tables": [
@@ -94,8 +95,8 @@ DEFAULTS: dict[str, Any] = {
     "focus": {"default_depth": 1},
     # ---- UI warning threshold for big schemas.
     "large_schema": {"warn_above": 60},
-    # ---- Schema diff: "what changed since the last migration". The only
-    # thing Joist writes to disk: a structure-only JSON baseline per alias.
+    # ---- Schema diff: "what changed since the last migration". Stores a
+    # structure-only JSON baseline per alias.
     "diff": {
         "enabled": True,
         # Directory holding baselines/{alias}.json. None -> BASE_DIR/var/joist

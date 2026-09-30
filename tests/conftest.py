@@ -4,6 +4,7 @@
 import pytest
 from django.core.cache import caches
 
+from django_joist import signals
 from django_joist.cache import reset_schema_cache, schema_cache
 from django_joist.conf import joist_settings
 
@@ -12,9 +13,11 @@ from django_joist.conf import joist_settings
 def _clean_state():
     caches["default"].clear()
     reset_schema_cache()
+    signals._pending.clear()
     yield
     caches["default"].clear()
     reset_schema_cache()
+    signals._pending.clear()
 
 
 @pytest.fixture()

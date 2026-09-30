@@ -28,7 +28,11 @@ class Command(JoistCommand):
 
         failed = False
         for alias in aliases:
-            snapshot = cache.rebuild(alias)
+            try:
+                snapshot = cache.rebuild(alias)
+            except ValueError as exc:
+                self.stderr.write(str(exc))
+                return 2
             if cache.last_error:
                 self.stderr.write(
                     f"Built the schema snapshot for [{alias}] but could not cache it: {cache.last_error}"

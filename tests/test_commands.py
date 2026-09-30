@@ -133,11 +133,24 @@ def test_show_points_at_the_diagram():
     assert "joist_open" in out
 
 
-def test_show_database_flag_follows_the_alias():
+def test_show_database_flag_follows_the_alias(settings_overrides):
+    settings_overrides("connections", {"secondary": {}})
     out = io.StringIO()
     call_command("joist_show", "--database", "secondary", stdout=out)
     assert "on [secondary]." in out.getvalue()
     assert "testapp_book" in out.getvalue()
+
+
+@pytest.mark.parametrize("command", ["joist_show", "joist_diff", "joist_rebuild"])
+def test_commands_use_managed_alias_and_reject_default(command, settings_overrides):
+    settings_overrides("connections", {"secondary": {}})
+    code, out, _ = _run(command)
+    assert code == 0
+    assert "secondary" in out
+
+    code, _, err = _run(command, database="default")
+    assert code == 2
+    assert "not managed" in err
 
 
 def test_show_drops_excluded_tables(settings_overrides):
@@ -317,7 +330,7 @@ def test_diff_reports_when_no_baseline_has_been_recorded(baselines):
     code, out, _ = _run("joist_diff")
     assert code == 0
     assert "No baseline recorded for [default]" in out
-    assert "next migration" in out
+    assert "next structural migration" in out
 
 
 def test_diff_reports_when_the_feature_is_disabled(settings_overrides):
@@ -337,7 +350,8 @@ def test_diff_emits_json_when_asked(baselines):
     assert [t["name"] for t in payload["tables_added"]] == ["testapp_tag"]
 
 
-def test_diff_database_flag_diffs_that_alias(baselines):
+def test_diff_database_flag_diffs_that_alias(baselines, settings_overrides):
+    settings_overrides("connections", {"secondary": {}})
     _save_baseline(dropped=["testapp_tag"], alias="secondary")
     code, out, _ = _run("joist_diff", database="secondary")
     assert code == 0
@@ -396,7 +410,8 @@ def test_rebuild_without_a_database_covers_every_managed_alias(settings_override
     assert schema_cache().peek("secondary") is not None
 
 
-def test_rebuild_database_flag_targets_one_alias():
+def test_rebuild_database_flag_targets_one_alias(settings_overrides):
+    settings_overrides("connections", {"default": {}, "secondary": {}})
     code, out, _ = _run("joist_rebuild", database="secondary")
     assert code == 0
     assert "Rebuilt schema snapshot for [secondary]." in out

@@ -88,11 +88,11 @@ def test_reload_discards_the_cached_merge():
 
 
 def test_the_setting_changed_signal_reloads_the_merge(settings):
-    assert joist_settings.get("fallback.enabled") is True
-    settings.JOIST = {"fallback": {"enabled": False}}
-    assert joist_settings.get("fallback.enabled") is False  # via setting_changed
+    assert joist_settings.get("fallback.enabled") is False
+    settings.JOIST = {"fallback": {"enabled": True}}
+    assert joist_settings.get("fallback.enabled") is True  # via setting_changed
     settings.JOIST = {}
-    assert joist_settings.get("fallback.enabled") is True
+    assert joist_settings.get("fallback.enabled") is False
 
 
 # -- importing without a configured project ----------------------------------

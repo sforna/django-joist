@@ -6,11 +6,11 @@ state Joist cannot rebuild from the live database: once the migration has run,
 the previous schema exists nowhere else. It stores the same structure-only
 snapshot the cache holds, so it never records row data. The file is derived and
 safe to delete; a missing baseline simply yields an empty diff until the next
-migration re-seeds it.
+structural migration re-seeds it.
 
-Every operation degrades instead of throwing. The baseline is the only part of
-Joist that touches the filesystem and it serves one secondary feature; letting
-a storage error escape could break things that do not depend on it - the
+Every operation degrades instead of throwing. The baseline is the only normal
+schema-read path that touches the filesystem, and it serves one secondary
+feature. Letting a storage error escape could break things that do not depend on it - the
 schema endpoint, or ``manage.py migrate`` via the post-migration listener. A
 missing baseline is an empty diff, and that is what every failure degrades to.
 ``last_error`` lets a caller that can act on it say something useful.

@@ -44,7 +44,7 @@ def test_schema_helper_returns_snapshot():
 
 
 @pytest.mark.django_db
-def test_post_migrate_refresh_captures_baseline_and_rebuilds(tmp_path, settings_overrides):
+def test_post_migrate_refresh_captures_baseline_and_rebuilds(tmp_path, settings_overrides, monkeypatch):
     settings_overrides("enabled", True)
     settings_overrides("diff.enabled", True)
     settings_overrides("diff.dir", str(tmp_path))
@@ -52,21 +52,63 @@ def test_post_migrate_refresh_captures_baseline_and_rebuilds(tmp_path, settings_
     from django_joist.diff.baseline import BaselineStore
 
     cache = schema_cache()
-    pre = cache.rebuild("default")  # a snapshot exists cached = "pre-migration" schema
+    assert cache.peek("default") is None  # no cached baseline to rely on
 
     # Simulate a migrate run: pre_migrate re-arms, post_migrate fires per app.
     # (Receivers called directly: sending the real signal would also drive
     # contenttypes' create_contenttypes, which needs a real app_config sender.)
     signals.rearm_after_migrate(sender=None, using="default")
+    pre = cache.peek("default")
+    assert pre is not None
+
+    original_rebuild = cache.rebuild
+
+    def migrated(alias):
+        after = original_rebuild(alias)
+        after["tables"].append({"name": "new_table"})
+        return after
+
+    monkeypatch.setattr(cache, "rebuild", migrated)
     signals.rebuild_after_migrate(sender=None, using="default")
     signals.rebuild_after_migrate(sender=None, using="default")  # debounced
 
     store = BaselineStore()
     baseline = store.get("default")
     assert baseline is not None, "pre-migration snapshot was not captured as baseline"
-    assert baseline["generated_at"] == pre["generated_at"]
+    assert baseline["tables"] == pre["tables"]
     assert cache.peek("default") is not None
     assert store.last_error is None
+
+
+@pytest.mark.django_db
+def test_noop_migrate_and_flush_keep_the_previous_baseline(tmp_path, settings_overrides):
+    from django_joist.diff.baseline import BaselineStore
+
+    settings_overrides("enabled", True)
+    settings_overrides("diff.dir", str(tmp_path))
+    store = BaselineStore()
+    older = {"connection": "default", "tables": []}
+    assert store.save("default", older)
+
+    signals.rearm_after_migrate(sender=None, using="default")
+    signals.rearm_after_migrate(sender=None, using="default")  # another app
+    signals.rebuild_after_migrate(sender=None, using="default")
+    signals.rebuild_after_migrate(sender=None, using="default")  # another app
+    signals.rebuild_after_migrate(sender=None, using="default")  # flush has no pre_migrate
+
+    assert store.get("default") == older
+
+
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_migrate_on_unmanaged_alias_does_not_refresh_managed_alias(settings_overrides):
+    settings_overrides("enabled", True)
+    settings_overrides("connections", {"secondary": {}})
+    cache = schema_cache()
+
+    signals.rearm_after_migrate(sender=None, using="default")
+    signals.rebuild_after_migrate(sender=None, using="default")
+
+    assert cache.peek("secondary") is None
 
 
 @pytest.mark.django_db
@@ -87,8 +129,8 @@ def test_post_migrate_skips_fallback_alias(tmp_path, settings_overrides):
 def test_post_migrate_survives_a_hostile_cache(monkeypatch, caplog, settings_overrides):
     """A migrate that already succeeded must not fail because of Joist.
 
-    The repository here is hostile on purpose: ``peek`` raises and ``rebuild``
-    reports a write failure, which are the two ways the listener could
+    The repository here is hostile on purpose: the pre-migration read raises
+    and the post-migration rebuild reports a write failure, either of which could
     otherwise let an exception escape into the migrate run.
     """
     import logging
@@ -97,23 +139,25 @@ def test_post_migrate_survives_a_hostile_cache(monkeypatch, caplog, settings_ove
 
     class Hostile:
         last_error = "the cache store is on fire"
+        calls = 0
 
         def managed_aliases(self):
             return ["default"]
 
-        def peek(self, alias):
-            raise RuntimeError("cannot read the cache")
-
         def rebuild(self, alias):
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("cannot read the schema")
             return {"connection": alias, "tables": []}
 
-    monkeypatch.setattr("django_joist.cache.schema_cache", lambda: Hostile())
+    hostile = Hostile()
+    monkeypatch.setattr("django_joist.cache.schema_cache", lambda: hostile)
 
     with caplog.at_level(logging.WARNING, logger="joist"):
         signals.rearm_after_migrate(sender=None, using="default")
         signals.rebuild_after_migrate(sender=None, using="default")  # must not raise
 
-    assert "could not capture diff baseline" in caplog.text
+    assert "could not capture schema before migration" in caplog.text
     assert "could not cache it" in caplog.text
 
 

@@ -21,6 +21,11 @@ from django_joist.introspection.builder import FALLBACK_ALIAS_PREFIX, SnapshotBu
 from django_joist.introspection.fallback import replay_migrations_on_sqlite
 
 
+@pytest.fixture(autouse=True)
+def opt_in_to_fallback(settings_overrides):
+    settings_overrides("fallback.enabled", True)
+
+
 @pytest.fixture()
 def unreachable(monkeypatch):
     """Make one alias look unreachable, leaving the throwaway alias working.
@@ -111,6 +116,17 @@ def test_fallback_is_skipped_when_disabled(settings_overrides):
     assert snapshot["tables"] == []
 
 
+def test_unreachable_connection_does_not_replay_without_opt_in(unreachable, settings_overrides, monkeypatch):
+    settings_overrides("fallback.enabled", False)
+
+    def unexpected_migration(*args, **kwargs):
+        raise AssertionError("fallback must not execute migrations")
+
+    monkeypatch.setattr("django.core.management.call_command", unexpected_migration)
+    with pytest.raises(OperationalError, match="Connection refused"):
+        SnapshotBuilder().build(unreachable)
+
+
 def test_fallback_leaves_the_databases_setting_as_it_found_it(django_db_blocker):
     from django.conf import settings as django_settings
 
@@ -140,8 +156,8 @@ def test_fallback_never_caches_the_throwaway_schema(settings_overrides, django_d
         replay_migrations_on_sqlite("ghost", SnapshotBuilder())
 
     cache = schema_cache()
-    assert cache.peek("ghost") is None
-    assert cache.peek(f"{FALLBACK_ALIAS_PREFIX}ghost") is None
+    assert cache._cache().get(cache.key("ghost")) is None
+    assert cache._cache().get(cache.key(f"{FALLBACK_ALIAS_PREFIX}ghost")) is None
     # The replay's own migrate emits post_migrate, so the listener did run and
     # had to skip the whole thing: without that skip it would fall through to
     # the managed aliases and cache a schema nobody asked for, mid-replay.

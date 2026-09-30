@@ -7,8 +7,8 @@ every access path produces identical output for the same inputs.
 
 Each filter returns a new instance (the base is never mutated), so a
 partially configured builder can be shared and branched safely. Structure
-only: it reads the same cached snapshot the dashboard uses and never touches
-row data. The same safeguards apply on every path: ``excluded_tables``
+only: it reads the same cached snapshot the dashboard uses. With the default
+settings it never touches row data. The same safeguards apply on every path: ``excluded_tables``
 stripping, the ``managed_aliases()`` allow-list, and the alias's own
 exclusions.
 """
@@ -136,7 +136,7 @@ class ExportBuilder:
         snapshot = (
             self._cache.rebuild(self._alias) if self._fresh else self._cache.get(self._alias)
         )
-        alias = str(snapshot.get("connection") or self._alias or "default")
+        alias = str(snapshot.get("connection") or self._alias or self._cache.managed_aliases()[0])
 
         tables = self._exporter.tables_for(
             snapshot.get("tables") or [],
