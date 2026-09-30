@@ -51,7 +51,9 @@ dependencies = ["Django>=5.2"]
 dev = ["pytest", "pytest-django", "coverage", "mypy", "django-stubs", "ruff", "pre-commit"]
 
 [project.urls]
-Homepage = "https://github.com/sforna/django-joist"
+Homepage = "https://sforna.im/projects/django-joist/"
+Repository = "https://github.com/sforna/django-joist"
+Changelog = "https://github.com/sforna/django-joist/blob/main/CHANGELOG.md"
 Issues = "https://github.com/sforna/django-joist/issues"
 
 [tool.hatch.build.targets.wheel]
