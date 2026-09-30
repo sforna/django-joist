@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `joist_install_agent` accepts the full MCP server command after `--`, for
+  projects where the agent cannot run the project's Python directly, e.g.
+  `joist_install_agent -- docker exec -i web python manage.py joist_mcp`.
+
+### Fixed
+
+- `joist_install_agent` no longer resolves symlinks in the interpreter path.
+  A virtualenv's `python` is a symlink to the base interpreter, so 0.3.0 wrote
+  an interpreter that could not import Django or the project. Entries written
+  by 0.3.0 are updated on the next run. A bare `--python` name is now looked up
+  on `PATH`.
+- `joist_install_agent` accepts an entry that `claude mcp add` wrote for the
+  same command (with the default `type` and an empty `env`) instead of
+  reporting it as customized.
+- The bundled skills no longer tell the agent to run `python manage.py`
+  directly when MCP is unavailable. They now use the same command prefix as the
+  project's `joist` MCP server entry, so the fallback also works for
+  containerised projects. `joist_install_agent` recognizes the skills written by
+  0.3.0 and updates them instead of reporting them as customized.
+
 ## [0.3.0] - 2026-09-30
 
 ### Added

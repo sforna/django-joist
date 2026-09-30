@@ -201,33 +201,72 @@ text = (
 ### MCP server
 
 Joist can also serve the same structure over the Model Context Protocol, so an
-agent queries the live schema on demand instead of being handed a paste. Point
-your MCP client at the management command as a stdio server:
+agent queries the live schema on demand instead of being handed a paste. The
+server is the `joist_mcp` management command, spoken to over stdio.
+
+It exposes five schema tools - `list_tables`, `describe_table`,
+`get_schema`, `focus_table` and `get_structural_review` - plus the
+`joist://schema` resource. Every one rides the same cached,
+exclusion-filtered snapshot as the dashboard, so their `format`, `compact`,
+`focus`, `connection` and annotation behaviour is identical to the CLI. It is
+structure only and adds no dependency: the newline-delimited JSON-RPC stdio
+transport lives in the package itself.
+
+#### Automatic setup
+
+Run the installer from the Django project root, with the interpreter that runs
+your project:
 
 ```bash
 python manage.py joist_install_agent
 ```
 
-Run this from the Django project root. It configures Claude Code, Codex and
-Cursor for this project: `.mcp.json`, `.codex/config.toml` and
-`.cursor/mcp.json` launch `joist_mcp` with the current Python interpreter and
-an absolute path to `manage.py`. It installs the bundled `joist-schema` and
-`joist-model-review` skills under `.claude/skills` and
-`.agents/skills`, and adds a short pointer to `AGENTS.md`. Cursor also reads
-`.agents/skills`. Existing unrelated configuration is retained; if a Joist
-entry or skill has been customized, the command stops and asks you to reconcile
-it. Re-running after an install makes no changes. Use `--agent claude`,
-`--agent codex` or `--agent cursor` to select clients (repeat the flag for more
-than one). For a different interpreter, pass `--python /path/to/python`.
+It configures Claude Code, Codex and Cursor for this project:
 
-For model changes, Django's `makemigrations` creates migrations from model and
-migration-file state. Joist can inspect the live schema and, after `migrate`,
-`joist_diff` can show the resulting structural change. Joist captures the live
-structure before `migrate` and records a baseline only when the structure
-actually changes; an empty cache, a no-op `migrate`, or `flush` does not erase
-the previous diff.
+- `.mcp.json`, `.codex/config.toml` and `.cursor/mcp.json` launch `joist_mcp`
+  with the absolute path of the current interpreter and of `manage.py`. A
+  virtualenv's interpreter is kept as it is, so the server starts with the
+  project's packages.
+- The bundled `joist-schema` and `joist-model-review` skills go under
+  `.claude/skills` and `.agents/skills` (Cursor reads `.agents/skills` too).
+- A short pointer is added to `AGENTS.md`.
 
-For a manual setup, point your MCP client at the management command as a stdio server:
+Options:
+
+- `--agent claude`, `--agent codex` or `--agent cursor` selects the clients;
+  repeat the flag for more than one. The default is all three.
+- `--python /path/to/python` selects another interpreter. A bare name such as
+  `--python python3` is looked up on `PATH`.
+- `--project-root DIR` selects another project directory.
+
+If the agent cannot run the project's Python directly - the app runs in a
+container, a VM, or behind a wrapper - write the full server command after
+`--`. It is stored as given, in place of the interpreter and `manage.py` path:
+
+```bash
+python manage.py joist_install_agent -- docker exec -i web python manage.py joist_mcp
+```
+
+The installer writes to the project directory it runs in. Inside a container,
+this is useful only when the project directory is mounted from the host, so
+the files reach the checkout your agent opens.
+
+Re-running the installer is safe. Unrelated configuration is kept, and a run
+after an install changes nothing. An entry that `claude mcp add` wrote for the
+same command is accepted as installed. MCP entries and skills written by an
+earlier Joist release are updated to the current version. If a Joist entry or
+skill has been customized, the installer stops without writing anything and asks
+you to reconcile it.
+
+#### Manual setup
+
+Register the server with your agent from the Django project root:
+
+| Agent | Command |
+|---|---|
+| Claude Code | `claude mcp add --scope project joist -- python manage.py joist_mcp` |
+| Codex (OpenAI) | `codex mcp add joist -- python manage.py joist_mcp` |
+| Cursor | the JSON below in the project's `.cursor/mcp.json` |
 
 ```json
 {
@@ -237,24 +276,21 @@ For a manual setup, point your MCP client at the management command as a stdio s
 }
 ```
 
-The server must launch from the Django project root with the interpreter that
-can import your settings (for containerised apps, wrap it:
-`docker exec -i <app> python manage.py joist_mcp`). Register it with your
-agent:
+The server must start in the Django project root, with an interpreter that can
+import your settings. `python` must therefore be the project's interpreter on
+the agent's `PATH`; otherwise use its absolute path. For a containerised app,
+replace `python manage.py joist_mcp` with a command that runs it in the
+container, for example `docker exec -i <container> python manage.py joist_mcp`
+(the container's working directory must be the project root).
 
-| Agent | Command |
-|---|---|
-| Claude Code | `claude mcp add --scope project joist -- python manage.py joist_mcp` |
-| Codex (OpenAI) | `codex mcp add joist -- python manage.py joist_mcp` |
-| Cursor | same JSON in the project's `.cursor/mcp.json` |
+#### Schema changes
 
-It exposes five schema tools - `list_tables`, `describe_table`,
-`get_schema`, `focus_table` and `get_structural_review` - plus the
-`joist://schema` resource. Every one rides the same cached,
-exclusion-filtered snapshot as the dashboard, so their `format`, `compact`,
-`focus`, `connection` and annotation behaviour is identical to the CLI. It is
-structure only and adds no dependency: the newline-delimited JSON-RPC stdio
-transport lives in the package itself.
+For model changes, Django's `makemigrations` creates migrations from model and
+migration-file state. Joist can inspect the live schema and, after `migrate`,
+`joist_diff` can show the resulting structural change. Joist captures the live
+structure before `migrate` and records a baseline only when the structure
+actually changes; an empty cache, a no-op `migrate`, or `flush` does not erase
+the previous diff.
 
 ## Configuration
 
