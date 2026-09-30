@@ -159,6 +159,7 @@ python manage.py joist_export --format=json --output=docs/schema.json
 python manage.py joist_export --format=dbml --output=docs/schema.dbml --check  # CI drift check
 python manage.py joist_export --tables=orders,order_lines --focus=orders --depth=1 --compact
 python manage.py joist_mcp                  # serve the MCP server over stdio (for coding agents)
+python manage.py joist_install_agent        # install agent skills and MCP project configuration
 ```
 
 `joist_doctor --format=json` and `--fail-on=warning` make it a CI gate;
@@ -203,6 +204,28 @@ Joist can also serve the same structure over the Model Context Protocol, so an
 agent queries the live schema on demand instead of being handed a paste. Point
 your MCP client at the management command as a stdio server:
 
+```bash
+python manage.py joist_install_agent
+```
+
+Run this from the Django project root. It configures Claude Code, Codex and
+Cursor for this project: `.mcp.json`, `.codex/config.toml` and
+`.cursor/mcp.json` launch `joist_mcp` with the current Python interpreter and
+an absolute path to `manage.py`. It installs the bundled `joist-schema` and
+`joist-model-review` skills under `.claude/skills` and
+`.agents/skills`, and adds a short pointer to `AGENTS.md`. Cursor also reads
+`.agents/skills`. Existing unrelated configuration is retained; if a Joist
+entry or skill has been customized, the command stops and asks you to reconcile
+it. Re-running after an install makes no changes. Use `--agent claude`,
+`--agent codex` or `--agent cursor` to select clients (repeat the flag for more
+than one). For a different interpreter, pass `--python /path/to/python`.
+
+For model changes, Django's `makemigrations` creates migrations from model and
+migration-file state. Joist can inspect the live schema and, after `migrate`,
+`joist_diff` can show the resulting structural change when a baseline exists.
+
+For a manual setup, point your MCP client at the management command as a stdio server:
+
 ```json
 {
   "mcpServers": {
@@ -220,8 +243,7 @@ agent:
 |---|---|
 | Claude Code | `claude mcp add --scope project joist -- python manage.py joist_mcp` |
 | Codex (OpenAI) | `codex mcp add joist -- python manage.py joist_mcp` |
-| pi | add the server to the project's `.mcp.json` (auto-discovered) |
-| VS Code / Cursor | same JSON in `.vscode/mcp.json` / `~/.cursor/mcp.json` |
+| Cursor | same JSON in the project's `.cursor/mcp.json` |
 
 It exposes five read-only tools - `list_tables`, `describe_table`,
 `get_schema`, `focus_table` and `get_structural_review` - plus the
