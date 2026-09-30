@@ -32,7 +32,7 @@ logger = logging.getLogger("joist")
 def replay_migrations_on_sqlite(requested_alias: str, builder) -> dict[str, Any]:
     from ..conf import joist_settings
 
-    if not joist_settings.get("fallback.enabled", True):
+    if not joist_settings.get("fallback.enabled", False):
         return {
             "connection": requested_alias,
             "fallback": False,

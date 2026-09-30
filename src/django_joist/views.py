@@ -97,9 +97,10 @@ def index(request: HttpRequest) -> HttpResponse:
 @joist_protected
 def schema_api(request: HttpRequest) -> JsonResponse:
     cache = schema_cache()
-    alias = request.GET.get("connection") or "default"
-    if alias not in cache.managed_aliases():
-        raise Http404  # only managed connections are visualizable
+    try:
+        alias = cache.resolve(request.GET.get("connection") or None)
+    except ValueError as exc:
+        raise Http404 from exc  # only managed connections are visualizable
 
     snapshot = cache.get(alias)
     # A snapshot Joist could not cache is still a correct snapshot, just built

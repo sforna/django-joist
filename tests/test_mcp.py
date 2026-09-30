@@ -129,6 +129,14 @@ def test_list_tables_rejects_an_unmanaged_connection():
     assert "not managed" in _error_text(_call("list_tables", connection="secondary"))
 
 
+def test_omitted_alias_uses_the_first_managed_connection(settings_overrides):
+    settings_overrides("connections", {"secondary": {}})
+    assert mcp._snapshot(None)["connection"] == "secondary"
+    assert mcp._builder(None)._alias == "secondary"
+    assert "testapp_book" in _text(_call("list_tables"))
+    assert "not managed" in _error_text(_call("list_tables", connection="default"))
+
+
 def test_describe_table_returns_the_structure(snapshot):
     table = json.loads(_text(_call("describe_table", table="testapp_book")))
     assert table["name"] == "testapp_book"

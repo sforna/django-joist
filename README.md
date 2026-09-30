@@ -12,8 +12,8 @@
 **A live database structure viewer for Django.** Joist introspects your live
 schema and renders it as a scrollable, zoomable ER diagram right inside your
 app, so you can see how tables actually connect without opening a DB client.
-It reads **structure only** — tables, columns, keys, indexes, foreign keys;
-row data is never queried or exposed.
+It reads **structure only** by default — tables, columns, keys, indexes,
+foreign keys; row data is never queried or exposed in this mode.
 
 > django-joist is a Django port of the concept implemented by
 > [Laravel Truss](https://github.com/albertoarena/laravel-truss) (MIT,
@@ -222,7 +222,10 @@ than one). For a different interpreter, pass `--python /path/to/python`.
 
 For model changes, Django's `makemigrations` creates migrations from model and
 migration-file state. Joist can inspect the live schema and, after `migrate`,
-`joist_diff` can show the resulting structural change when a baseline exists.
+`joist_diff` can show the resulting structural change. Joist captures the live
+structure before `migrate` and records a baseline only when the structure
+actually changes; an empty cache, a no-op `migrate`, or `flush` does not erase
+the previous diff.
 
 For a manual setup, point your MCP client at the management command as a stdio server:
 
@@ -245,7 +248,7 @@ agent:
 | Codex (OpenAI) | `codex mcp add joist -- python manage.py joist_mcp` |
 | Cursor | same JSON in the project's `.cursor/mcp.json` |
 
-It exposes five read-only tools - `list_tables`, `describe_table`,
+It exposes five schema tools - `list_tables`, `describe_table`,
 `get_schema`, `focus_table` and `get_structural_review` - plus the
 `joist://schema` resource. Every one rides the same cached,
 exclusion-filtered snapshot as the dashboard, so their `format`, `compact`,
@@ -261,7 +264,8 @@ dicts merge key-by-key). The common knobs:
 | Key | Purpose |
 |---|---|
 | `enabled` | Master switch; defaults to `DEBUG`. Off = every route 404s |
-| `connections` | Visualizable database aliases + per-alias overrides, e.g. `{"analytics": {"excluded_tables": [...]}}`; empty = just `default` |
+| `connections` | Visualizable database aliases + per-alias overrides, e.g. `{"analytics": {"excluded_tables": [...]}}`; empty = just `default`; an omitted alias selects the first managed alias |
+| `fallback.enabled` | Opt in to replaying project migrations on in-memory SQLite when a database is unreachable; off by default, so connection errors surface normally |
 | `excluded_tables` | Hidden server-side (never sent to the browser). Django bookkeeping tables are pre-listed |
 | `authorization.callable` / `.allowed_emails` | Who may view outside `DEBUG`; a custom callable replaces the email allow-list |
 | `cache.ttl` / `cache.alias` | Snapshot cache (seconds, `<= 0` = forever) and which `CACHES` entry to use |
@@ -275,15 +279,20 @@ dicts merge key-by-key). The common knobs:
 | `theme.*` | Semantic colour/font knobs for both light and dark |
 | `base_url` | Used by `joist_open` to build a browsable URL |
 
-The baseline file under `diff.dir` is the only thing Joist writes to disk;
-it is derived and safe to delete — worth gitignoring alongside `var/`.
+During normal schema reads, the baseline file under `diff.dir` is Joist's only
+disk output; it is derived and safe to delete — worth gitignoring alongside
+`var/`. The optional `joist_install_agent` command writes agent configuration
+to the project.
 
 ## The no-data promise
 
 Structure is the `CREATE TABLE` definition: tables, columns (name, native
 type, nullability, defaults), primary keys, indexes, foreign keys with
-referential actions, and native comments. Row contents are never queried —
-not by the dashboard, the API, the MCP server, the CLI, or the doctor. Config
+referential actions, and native comments. With the default settings, row
+contents are never queried by the dashboard, the API, the MCP server, the CLI,
+or the doctor. Enabling `fallback.enabled` executes project migrations when a
+connection fails; `RunPython` and `RunSQL` migrations can perform arbitrary
+queries and side effects, including against another database alias. Config
 `excluded_tables` are stripped server-side, so an excluded table never
 reaches the client, the diff, or an export.
 

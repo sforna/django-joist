@@ -17,12 +17,16 @@ class Command(JoistCommand):
         parser.add_argument(
             "--database",
             default=None,
-            help="Show this database alias instead of the default.",
+            help="Show this database alias instead of the first managed alias.",
         )
 
     def handle(self, *args, **options):
         cache = schema_cache()
-        snapshot = cache.get(options["database"])
+        try:
+            snapshot = cache.get(options["database"])
+        except ValueError as exc:
+            self.stderr.write(str(exc))
+            return 2
         if cache.last_error:
             self.stdout.write(
                 self.style.WARNING(f"Cache unavailable ({cache.last_error}); snapshot built live.")

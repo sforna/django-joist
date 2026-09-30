@@ -3,7 +3,8 @@
 Reads schema only: Joist introspects the live schema (tables,
 columns, keys, indexes, foreign keys, comments) and renders it as a zoomable
 ER diagram, exports, a structural diff and a deterministic schema review.
-Row contents are never queried or exposed.
+With the default settings, row contents are never queried or exposed. The
+optional migration replay can run project code when a connection fails.
 
 Public API::
 

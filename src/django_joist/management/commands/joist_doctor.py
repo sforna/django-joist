@@ -1,8 +1,8 @@
 """joist doctor: review the database structure for problems (structure only).
 
 Exit codes: 0 clean (nothing at or above the fail level), 1 findings at or
-above it, 2 a configuration or snapshot error. Safe in CI and commit hooks:
-no row data, no network call.
+above it, 2 a configuration or snapshot error. With the default settings it
+reads only structure, so it is safe in CI and commit hooks.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ class Command(JoistCommand):
     )
 
     def add_arguments(self, parser):
-        parser.add_argument("--database", default=None, help="Review this alias instead of the default.")
+        parser.add_argument("--database", default=None, help="Review this alias instead of the first managed alias.")
         parser.add_argument("--table", default=None, help="Review only this table.")
         parser.add_argument(
             "--only",

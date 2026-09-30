@@ -1,10 +1,12 @@
-"""joist_mcp: serve the read-only MCP server over stdio.
+"""joist_mcp: serve the schema MCP server over stdio.
 
 Launched by an MCP client, not by a person; it speaks newline-delimited
 JSON-RPC on stdin/stdout until the client closes the pipe. Five structure-only
 tools plus the ``joist://schema`` resource, all over the same cached,
-exclusion-filtered snapshot everything else reads. No row data, no writes, no
-network. See ``django_joist.mcp`` for the protocol and the safeguards.
+exclusion-filtered snapshot everything else reads. Responses contain no row
+data. Migration fallback is disabled by default; if enabled, a failed database
+connection can execute migration code. See ``django_joist.mcp`` for the
+protocol and safeguards.
 
 Register it with a client as a stdio server, e.g.:
 
@@ -21,7 +23,7 @@ from django_joist.cli import JoistCommand
 
 
 class Command(JoistCommand):
-    help = "Serve the read-only, structure-only MCP server over stdio."
+    help = "Serve the structure-only MCP server over stdio."
 
     # A protocol stream, not a console: Django's system checks and any banner
     # would land on stdout and corrupt the JSON-RPC framing.

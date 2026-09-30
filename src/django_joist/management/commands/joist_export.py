@@ -34,7 +34,7 @@ class Command(JoistCommand):
         )
         parser.add_argument("--output", default=None, help="Write to this file instead of stdout.")
         parser.add_argument(
-            "--database", default=None, help="Export this database alias instead of the default."
+            "--database", default=None, help="Export this database alias instead of the first managed alias."
         )
         parser.add_argument("--tables", default="", help="Only these tables, comma-separated.")
         parser.add_argument(

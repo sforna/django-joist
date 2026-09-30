@@ -146,6 +146,22 @@ def test_schema_api_secondary_alias(client, enabled, settings_overrides):
     assert all(t["name"] != "testapp_book" for t in payload["tables"])
 
 
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_omitted_alias_uses_only_managed_connection(client, enabled, settings_overrides):
+    import django_joist
+    from django_joist.cache import schema_cache
+
+    settings_overrides("connections", {"secondary": {}})
+    assert schema_cache().resolve(None) == "secondary"
+    assert django_joist.schema()["connection"] == "secondary"
+    assert json.loads(client.get(reverse("joist:api_schema")).content)["connection"] == "secondary"
+    assert client.get(reverse("joist:export", args=["dbml"])).status_code == 200
+    assert client.get(reverse("joist:api_schema"), {"connection": "default"}).status_code == 404
+    assert client.get(reverse("joist:export", args=["dbml"]), {"connection": "default"}).status_code == 404
+    with pytest.raises(ValueError, match="not managed"):
+        django_joist.schema("default")
+
+
 def test_schema_api_diff_and_baseline(tmp_path, client, enabled, settings_overrides):
     from django_joist.cache import schema_cache
     from django_joist.diff.baseline import BaselineStore

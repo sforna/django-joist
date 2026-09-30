@@ -9,7 +9,8 @@ baseline store does it for the filesystem: the store is somebody else's
 infrastructure, and an unusable one must not break things that do not depend
 on it. The snapshot is always rebuildable from the live database, so a broken
 store costs speed, never correctness. ``last_error`` lets a caller that can
-act on it say something useful.
+act on it say something useful. A database connection failure still raises
+when the optional migration fallback is disabled.
 """
 
 from __future__ import annotations
@@ -41,20 +42,27 @@ class SchemaCacheRepository:
         return caches[joist_settings.get("cache.alias") or "default"]
 
     def resolve(self, alias: str | None) -> str:
-        return alias or DEFAULT_DB_ALIAS
+        managed = self.managed_aliases()
+        resolved = alias or managed[0]
+        if resolved not in managed:
+            raise ValueError(
+                f"Connection [{resolved}] is not managed by Joist. "
+                "Add it under JOIST['connections']."
+            )
+        return resolved
 
     def managed_aliases(self) -> list[str]:
         """The aliases Joist manages: those configured under
         ``JOIST['connections']``, or the default alias when none are."""
         configured = list((joist_settings.get("connections") or {}).keys())
-        return configured or [self.resolve(None)]
+        return configured or [DEFAULT_DB_ALIAS]
 
     # -- reads/writes ------------------------------------------------------
     def get(self, alias: str | None = None) -> dict[str, Any]:
-        """The cached snapshot, building and caching it on a miss. Always
-        returns a usable snapshot: when the cache store cannot be read the
-        schema is built live and simply not cached, which is slower but
-        complete."""
+        """The cached snapshot, building and caching it on a miss. When the
+        cache store cannot be read, the schema is built live and simply not
+        cached. A failed database connection raises unless migration fallback
+        was explicitly enabled."""
         alias = self.resolve(alias)
 
         cached = self._attempt(lambda: self._cache().get(self.key(alias)), "read")
