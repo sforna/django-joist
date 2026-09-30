@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-30
+
+### Added
+
+- `manage.py joist_install_agent` configures the Joist MCP server for Claude
+  Code, Codex, and Cursor, installs the bundled `joist-schema` and
+  `joist-model-review` skills, and adds a pointer to `AGENTS.md`. Re-running it
+  preserves unrelated configuration and detects customized Joist entries.
+
+### Changed
+
+- Migration replay on an in-memory SQLite database is now opt-in through
+  `JOIST["fallback"]["enabled"] = True`. Django migrations can execute custom
+  Python and SQL, including queries against other database aliases. With the
+  default setting, an unreachable database now raises the connection error
+  instead of presenting an empty or replayed schema.
+- When no connection is specified, Joist uses the first alias in
+  `JOIST["connections"]`. Reads of an alias outside that list are rejected
+  consistently across MCP, HTTP, CLI, and the Python API.
+
+### Fixed
+
+- Schema diff now captures the live structure before `migrate` even when the
+  snapshot cache is empty or expired. It records a new baseline only when the
+  structure changes, so a no-op `migrate` or `flush` preserves the previous
+  diff. Migrations on an unmanaged alias no longer refresh managed aliases.
+
 ## [0.2.0] - 2026-09-28
 
 ### Added
@@ -180,7 +207,8 @@ Initial release.
 - Excluded tables are filtered server-side, so their structure never reaches
   the browser.
 
-[Unreleased]: https://github.com/sforna/django-joist/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sforna/django-joist/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/sforna/django-joist/releases/tag/v0.3.0
 [0.2.0]: https://github.com/sforna/django-joist/releases/tag/v0.2.0
 [0.1.2]: https://github.com/sforna/django-joist/releases/tag/v0.1.2
 [0.1.1]: https://github.com/sforna/django-joist/releases/tag/v0.1.1
