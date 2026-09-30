@@ -25,7 +25,7 @@ instance, so a base builder is safe to share.
 
 from __future__ import annotations
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = ["SnapshotBuilder", "__version__", "schema", "snapshot"]
 
