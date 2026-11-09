@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `joist_export --check` now prints a regenerate command that repeats the
+  run's `--format`, table filters, `--focus`/`--depth`, `--compact` and
+  `--no-annotations`. It used to suggest only `--output`, which rewrote the
+  file in the default format, so the next check still failed.
+
 ## [0.3.1] - 2026-09-30
 
 ### Added

@@ -166,6 +166,9 @@ python manage.py joist_install_agent        # install agent skills and MCP proje
 `joist_export --check` regenerates, compares, writes nothing and exits `1` on
 drift (`2` on usage errors), so a migration that changes the schema without
 refreshing the committed file fails the build.
+The export reads the live database, not the models, so run `manage.py migrate`
+before the check in CI. On an unmigrated database it exits `2` ("No tables
+matched"), and on a partly migrated one it reports drift that is not real.
 
 ## As AI context
 

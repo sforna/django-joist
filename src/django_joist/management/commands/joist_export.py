@@ -15,6 +15,7 @@ a usage or runtime error (unknown format, unmanaged alias, unwritable path,
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 
 from django.core.management.base import CommandError
@@ -123,7 +124,7 @@ class Command(JoistCommand):
         content = builder.render(fmt)
 
         if check:
-            return self._check(str(output), content)
+            return self._check(str(output), content, self._regenerate_command(options, fmt))
         if output is not None:
             return self._write(str(output), content, fmt)
 
@@ -136,7 +137,33 @@ class Command(JoistCommand):
         """Parse a comma-separated option into a trimmed, non-empty list."""
         return [part for part in (v.strip() for v in str(value or "").split(",")) if part]
 
-    def _check(self, output: str, content: str) -> int:
+    @classmethod
+    def _regenerate_command(cls, options, fmt: str) -> str:
+        """The command line that rewrites --output with this run's settings.
+
+        Repeats every option that shapes the content - the resolved format
+        included - so following the hint makes the next --check pass rather
+        than rewriting the file in the default format. --fresh is left out:
+        it changes when the schema is read, never what is written.
+        """
+        parts = ["manage.py", "joist_export", f"--format={fmt}", f"--output={options['output']}"]
+        if options["database"]:
+            parts.append(f"--database={options['database']}")
+        if tables := cls._list(options["tables"]):
+            parts.append(f"--tables={','.join(tables)}")
+        if exclude := cls._list(options["exclude"]):
+            parts.append(f"--exclude={','.join(exclude)}")
+        if options["focus"]:
+            parts.append(f"--focus={options['focus']}")
+            if options["depth"] is not None:
+                parts.append(f"--depth={options['depth']}")
+        if options["compact"]:
+            parts.append("--compact")
+        if options["no_annotations"]:
+            parts.append("--no-annotations")
+        return shlex.join(parts)
+
+    def _check(self, output: str, content: str, regenerate: str) -> int:
         path = Path(output)
         current = path.read_text(encoding="utf-8") if path.is_file() else None
         if current == content:
@@ -144,7 +171,7 @@ class Command(JoistCommand):
             return 0
         self.stderr.write(
             self.style.ERROR(
-                f"{output} is out of date. Regenerate it with: manage.py joist_export --output={output}"
+                f"{output} is out of date. Regenerate it with: {regenerate}"
             )
         )
         return 1

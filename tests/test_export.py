@@ -6,6 +6,7 @@ from __future__ import annotations
 import copy
 import io
 import json
+import shlex
 
 import pytest
 from django.core.management import call_command
@@ -409,6 +410,58 @@ def test_command_writes_file_and_check_gate(tmp_path):
     code, _, err = _run(format="dbml", output=str(target), check=True)
     assert code == 1 and "out of date" in err
     assert target.read_text() == stale  # --check writes nothing
+
+
+@pytest.mark.django_db
+def test_check_hint_regenerates_with_the_same_options(tmp_path):
+    target = tmp_path / "schema.json"
+    shaping = {"format": "json", "tables": "testapp_book, testapp_author", "compact": True}
+    _run(output=str(target), **shaping)
+    target.write_text(target.read_text() + "drift")
+
+    code, _, err = _run(output=str(target), check=True, fresh=True, **shaping)
+    assert code == 1
+    hint = shlex.split(err.split("Regenerate it with: ", 1)[1])
+    assert hint[:2] == ["manage.py", "joist_export"]
+    assert "--fresh" not in hint  # when the schema is read, not what is written
+    assert "--check" not in hint
+
+    # Following the hint is what makes the next --check pass.
+    call_command(*hint[1:])
+    code, out, _ = _run(output=str(target), check=True, **shaping)
+    assert code == 0 and "up to date" in out
+
+
+def test_check_hint_repeats_every_content_shaping_option():
+    from django_joist.management.commands.joist_export import Command
+
+    options = _opts(
+        output="docs/my schema.md",
+        database="secondary",
+        tables="a, b",
+        exclude="c",
+        focus="a",
+        depth=2,
+        compact=True,
+        no_annotations=True,
+        fresh=True,
+        check=True,
+    )
+    assert shlex.split(Command._regenerate_command(options, "markdown")) == [
+        "manage.py",
+        "joist_export",
+        "--format=markdown",
+        "--output=docs/my schema.md",
+        "--database=secondary",
+        "--tables=a,b",
+        "--exclude=c",
+        "--focus=a",
+        "--depth=2",
+        "--compact",
+        "--no-annotations",
+    ]
+    # --depth only means something with --focus.
+    assert "--depth" not in Command._regenerate_command(_opts(output="x", depth=2), "dbml")
 
 
 @pytest.mark.django_db
