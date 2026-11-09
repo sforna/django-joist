@@ -186,3 +186,98 @@ def test_post_migrate_never_lets_a_rebuild_failure_escape(monkeypatch, caplog, s
         signals.rebuild_after_migrate(sender=None, using="default")  # must not raise
 
     assert "post-migration refresh failed for [default]" in caplog.text
+
+
+# -- payload(): the dashboard payload in process ------------------------------
+@pytest.fixture()
+def http_enabled(settings, settings_overrides):
+    settings.DEBUG = True  # DEBUG opens the gate, so the HTTP side can be compared
+    settings_overrides("enabled", True)
+
+
+@pytest.mark.django_db
+def test_payload_equals_what_the_endpoint_serves(client, http_enabled, settings_overrides, tmp_path):
+    import json
+
+    from django.urls import reverse
+
+    from django_joist.diff.baseline import BaselineStore
+
+    # Every part of the envelope populated: exclusions, a real diff and the
+    # doctor, so equality covers the whole assembly rather than an empty shape.
+    settings_overrides("excluded_tables", ["testapp_tag"])
+    settings_overrides("diff.dir", str(tmp_path))
+    settings_overrides("doctor.dashboard", True)
+    baseline = json.loads(json.dumps(schema_cache().rebuild("default")))
+    baseline["tables"] = [t for t in baseline["tables"] if t["name"] != "testapp_author"]
+    assert BaselineStore().save("default", baseline)
+
+    served = json.loads(client.get(reverse("joist:api_schema")).content)
+    in_process = json.loads(json.dumps(django_joist.payload()))
+    assert in_process == served
+    assert in_process["diff"]["tables_added"] == [{"name": "testapp_author"}]
+    assert in_process["doctor"]["findings"]
+    assert all(t["name"] != "testapp_tag" for t in in_process["tables"])
+
+
+@pytest.mark.django_db
+def test_payload_is_not_the_raw_schema(settings_overrides):
+    settings_overrides("excluded_tables", ["testapp_tag"])
+    settings_overrides("diff.enabled", False)
+    settings_overrides("doctor.dashboard", False)
+
+    raw = django_joist.schema()
+    shaped = django_joist.payload()
+    assert any(t["name"] == "testapp_tag" for t in raw["tables"])
+    assert all(t["name"] != "testapp_tag" for t in shaped["tables"])
+    assert "diff" not in raw and shaped["diff"] is None
+    assert "doctor" not in raw and shaped["doctor"] is None
+
+
+@pytest.mark.django_db
+def test_payload_runs_without_the_dashboard_enabled(settings_overrides):
+    # No authorization and no enabled gate: that belongs to whatever page
+    # exposes the result, as with snapshot() and schema().
+    settings_overrides("enabled", False)
+    assert django_joist.payload()["connection"] == "default"
+
+
+@pytest.mark.django_db
+def test_payload_refuses_an_unmanaged_alias():
+    with pytest.raises(ValueError, match="not managed"):
+        django_joist.payload("not-configured")
+
+
+@pytest.mark.django_db
+def test_payload_does_not_mutate_a_snapshot_the_cache_hands_out(monkeypatch, settings_overrides):
+    settings_overrides("excluded_tables", ["testapp_tag"])
+    settings_overrides("doctor.dashboard", False)
+    cache = schema_cache()
+    shared = cache.rebuild("default")
+    monkeypatch.setattr(cache, "get", lambda alias=None: shared)
+
+    django_joist.payload()
+    assert "diff" not in shared and "doctor" not in shared
+    assert any(t["name"] == "testapp_tag" for t in shared["tables"])
+
+
+@pytest.mark.django_db
+def test_json_script_writes_the_block_the_dashboard_reads(settings_overrides):
+    # The embedding contract is Django's own filter, not markup a host has to
+    # hand-write: pin that it still produces the element schema-source.js
+    # selects (script#joist-payload[type="application/json"]) and escapes a
+    # value that would otherwise end the block early.
+    import re
+
+    from django.template import Context, Template
+
+    settings_overrides("doctor.dashboard", False)
+    data = django_joist.payload()
+    data["tables"].append({"name": "t", "columns": [{"name": "c", "default": "</script><b>&"}]})
+    html = Template('{{ data|json_script:"joist-payload" }}').render(Context({"data": data}))
+
+    opening = re.match(r"<script ([^>]*)>", html)
+    assert opening is not None
+    assert set(opening.group(1).split()) == {'id="joist-payload"', 'type="application/json"'}
+    assert html.count("</script>") == 1 and html.endswith("</script>")
+    assert "\\u003C/script\\u003E\\u003Cb\\u003E\\u0026" in html

@@ -25,7 +25,6 @@ from __future__ import annotations
 import json
 import posixpath
 from pathlib import Path
-from typing import Any
 
 from django.conf import settings
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
@@ -34,8 +33,8 @@ from django.urls import reverse
 
 from .cache import schema_cache
 from .conf import joist_settings
+from .dashboard import dashboard_payload
 from .security import joist_protected
-from .selection import without_excluded_tables
 from .theme import ThemeStylesheet
 
 #: Public asset name -> path relative to the package's static/joist dir.
@@ -53,6 +52,7 @@ ASSETS: dict[str, str] = {
     "table-match.js": "js/table-match.js",
     "focus-combobox.js": "js/focus-combobox.js",
     "export-menu.js": "js/export-menu.js",
+    "schema-source.js": "js/schema-source.js",
     "label-face-gate.js": "js/label-face-gate.js",
     "mermaid.min.js": "vendor/mermaid.min.js",
     "joist.css": "css/joist.css",
@@ -76,83 +76,57 @@ EXPORT_MIME = {
 # -- page shell ---------------------------------------------------------------
 @joist_protected
 def index(request: HttpRequest) -> HttpResponse:
-    return render(
-        request,
-        "joist/index.html",
-        {
-            "connections": json.dumps(schema_cache().managed_aliases()),
-            "has_custom_theme": ThemeStylesheet().is_configured(joist_settings.get("theme") or {}),
-            "type_labels": joist_settings.get("diagram.type_labels", "native"),
-            "warn_above": joist_settings.get("large_schema.warn_above", 60),
-            "focus_depth": joist_settings.get("focus.default_depth", 1),
-            "min_zoom": joist_settings.get("diagram.min_zoom", 0.7),
-            "doctor_flag_tables": bool(joist_settings.get("doctor.flag_tables", True)),
-            "mermaid_url": joist_settings.get("diagram.mermaid_url")
-            or reverse("joist:asset", args=("mermaid.min.js",)),
-        },
-    )
+    return render(request, "joist/index.html", _page_context(schema_cache().managed_aliases()))
+
+
+def embedded_dashboard(request: HttpRequest, alias: str | None = None) -> HttpResponse:
+    """The dashboard page with its payload embedded, for a host to serve.
+
+    Renders the same ``joist/index.html`` as the dashboard, with
+    ``django_joist.payload(alias)`` written into the app container through
+    ``json_script``, so the browser draws it without requesting the schema
+    endpoint. The page offers only the embedded connection: another one is
+    another call.
+
+    Deliberately not gated: the host's own view decides who sees it, as with
+    ``payload()`` (wrap it in ``staff_member_required`` or your own check).
+    Joist's asset routes still serve the page's CSS and JS, so the viewer must
+    also pass Joist's authorizer. Raises ``ValueError`` for an alias Joist
+    does not manage.
+    """
+    data = dashboard_payload(alias)
+    context = _page_context([data["connection"]])
+    context["embedded_payload"] = data
+    return render(request, "joist/index.html", context)
+
+
+def _page_context(connections: list[str]) -> dict:
+    """What ``joist/index.html`` needs, minus an embedded payload."""
+    return {
+        "connections": json.dumps(connections),
+        "has_custom_theme": ThemeStylesheet().is_configured(joist_settings.get("theme") or {}),
+        "type_labels": joist_settings.get("diagram.type_labels", "native"),
+        "warn_above": joist_settings.get("large_schema.warn_above", 60),
+        "focus_depth": joist_settings.get("focus.default_depth", 1),
+        "min_zoom": joist_settings.get("diagram.min_zoom", 0.7),
+        "doctor_flag_tables": bool(joist_settings.get("doctor.flag_tables", True)),
+        "mermaid_url": joist_settings.get("diagram.mermaid_url") or reverse("joist:asset", args=("mermaid.min.js",)),
+        "embedded_payload": None,
+    }
 
 
 # -- JSON schema endpoint -----------------------------------------------------
 @joist_protected
 def schema_api(request: HttpRequest) -> JsonResponse:
-    cache = schema_cache()
+    """The dashboard payload over HTTP. Assembled by ``dashboard_payload``,
+    the same function ``django_joist.payload()`` returns, so the two cannot
+    drift; an unmanaged connection is a 404 here rather than an error."""
     try:
-        alias = cache.resolve(request.GET.get("connection") or None)
+        payload = dashboard_payload(request.GET.get("connection") or None)
     except ValueError as exc:
         raise Http404 from exc  # only managed connections are visualizable
 
-    snapshot = cache.get(alias)
-    # A snapshot Joist could not cache is still a correct snapshot, just built
-    # live. Flagged rather than 500ing: the diagram works on a broken cache
-    # store and the dashboard can say why.
-    cache_unavailable = cache.last_error is not None
-
-    snapshot["tables"] = without_excluded_tables(snapshot.get("tables", []), alias)
-    diff_result, baseline_unavailable = _diff_for(alias, snapshot)
-    snapshot["diff"] = diff_result
-    snapshot["doctor"] = _doctor_for(alias, snapshot)
-    if baseline_unavailable:
-        snapshot["diff_unavailable"] = True
-    if cache_unavailable:
-        snapshot["cache_unavailable"] = True
-
-    return JsonResponse(snapshot, json_dumps_params={"indent": None})
-
-
-def _diff_for(alias: str, snapshot: dict) -> tuple[Any, bool]:
-    """The structural diff against the recorded baseline, or None when the
-    feature is off or no baseline exists. The baseline is filtered through the
-    same exclusion list before comparison, so an excluded table never
-    surfaces via the diff either."""
-    if not joist_settings.get("diff.enabled", True):
-        return None, False
-
-    from .diff.baseline import BaselineStore
-    from .diff.differ import SchemaDiffer
-
-    baselines = BaselineStore()
-    baseline = baselines.get(alias)
-    if baseline is None:
-        # A read failure and "no baseline yet" both land here; only the first
-        # is worth telling anyone about (the second is a fresh install's
-        # normal state until the next migration).
-        return None, baselines.last_error is not None
-
-    baseline["tables"] = without_excluded_tables(baseline.get("tables", []), alias)
-    return SchemaDiffer().diff(baseline, snapshot), False
-
-
-def _doctor_for(alias: str, snapshot: dict) -> dict | None:
-    """The doctor report, or None when the dashboard Health panel is off. The
-    snapshot is already exclusion-filtered, so excluded tables never reach a
-    finding. Rides the same endpoint as the diagram: no extra request."""
-    if not joist_settings.get("doctor.dashboard", True):
-        return None
-
-    from .doctor import DoctorReport
-
-    return DoctorReport().for_snapshot(alias, snapshot)
+    return JsonResponse(payload, json_dumps_params={"indent": None})
 
 
 # -- server-side export -------------------------------------------------------

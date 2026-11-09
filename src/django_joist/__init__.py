@@ -21,13 +21,16 @@ Public API::
 ``snapshot()`` returns an immutable, fluent
 :class:`django_joist.export.builder.ExportBuilder`; every filter returns a new
 instance, so a base builder is safe to share.
+
+``payload()`` returns the dict the dashboard runs on - the same one the JSON
+endpoint serves - for a custom page that renders the diagram itself.
 """
 
 from __future__ import annotations
 
 __version__ = "0.3.1"
 
-__all__ = ["SnapshotBuilder", "__version__", "schema", "snapshot"]
+__all__ = ["SnapshotBuilder", "__version__", "payload", "schema", "snapshot"]
 
 
 def snapshot():
@@ -43,6 +46,22 @@ def schema(alias: str | None = None):
     from .cache import schema_cache
 
     return schema_cache().get(alias)
+
+
+def payload(alias: str | None = None):
+    """The dashboard payload for an alias, in process, with no HTTP request.
+
+    Unlike :func:`schema`, which is the raw cached snapshot, this is exactly
+    what the dashboard's JSON endpoint serves: ``excluded_tables`` filtered
+    out, plus the ``diff`` against the baseline, the ``doctor`` report, and
+    the ``diff_unavailable`` / ``cache_unavailable`` flags when those apply.
+
+    Runs no authorization: a page that exposes the result is responsible for
+    gating it. Raises ``ValueError`` for an alias Joist does not manage.
+    """
+    from .dashboard import dashboard_payload
+
+    return dashboard_payload(alias)
 
 
 def __getattr__(name):

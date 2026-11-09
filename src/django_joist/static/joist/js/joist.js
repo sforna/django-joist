@@ -13,6 +13,7 @@ import { hasDoctor, doctorSummary, worstSeverity, tableBadges, findingGroups, co
 import { createFocusCombobox } from './focus-combobox.js';
 import { labelFaceGate } from './label-face-gate.js';
 import { serverExportsAvailable, pngAvailability } from './export-menu.js';
+import { readPayload, inlinePayload } from './schema-source.js';
 
 const app = document.getElementById('joist-app');
 
@@ -1256,7 +1257,26 @@ function populateConnectionOptions() {
   el.connection.closest('.joist-field')?.toggleAttribute('hidden', config.connections.length < 2);
 }
 
-async function loadSchema() {
+/**
+ * The payload, from the page when it carries one and from the endpoint
+ * otherwise. Null means the load already failed and said so in a banner.
+ *
+ * A page that embeds its own payload is a host rendering the diagram itself
+ * with `django_joist.payload()` already in hand; fetching there would be the
+ * site making an HTTP request to itself for data it is holding. Such a page
+ * draws the one connection it embedded: a switch is the host's to handle,
+ * because only the host can produce another connection's payload.
+ */
+async function fetchPayload() {
+  let embedded;
+  try {
+    embedded = inlinePayload(app);
+  } catch (error) {
+    el.banners.replaceChildren(banner('error', error.message));
+    return null;
+  }
+  if (embedded) return embedded;
+
   const url = new URL(config.endpoint, window.location.origin);
   if (state.connection) url.searchParams.set('connection', state.connection);
 
@@ -1265,17 +1285,19 @@ async function loadSchema() {
   const response = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!response.ok) {
     el.banners.replaceChildren(banner('error', `Could not load schema (HTTP ${response.status}).`));
-    return;
+    return null;
   }
+  return response.json();
+}
 
-  const payload = await response.json();
-  state.tables = payload.tables ?? [];
-  state.fallback = Boolean(payload.fallback);
-  state.generatedAt = payload.generated_at ?? null;
-  state.diff = payload.diff ?? null;
-  state.cacheUnavailable = payload.cache_unavailable === true;
-  state.diffUnavailable = payload.diff_unavailable === true;
-  state.doctor = payload.doctor ?? null;
+async function loadSchema() {
+  const payload = await fetchPayload();
+  if (payload === null) return;
+
+  Object.assign(state, readPayload(payload));
+  // An embedded payload names its own connection; the footer and the export
+  // links follow it rather than the first one data-connections lists.
+  if (typeof payload.connection === 'string' && payload.connection) state.connection = payload.connection;
   state.lastKey = null; // force an auto-fit for the new schema
   populateFocusOptions();
   // Apply a focus requested via the URL, once we can confirm the table exists.

@@ -201,6 +201,47 @@ text = (
 )
 ```
 
+For a custom page, `payload()` returns exactly what the dashboard's JSON
+endpoint serves - the exclusion-filtered tables plus the `diff`, the `doctor`
+report and the unavailability flags - without an HTTP request to your own site:
+
+```python
+from django_joist import payload
+
+data = payload()            # first managed alias
+data = payload("reporting") # ValueError if the alias is not managed
+```
+
+It runs no authorization: the view that exposes it must gate it, for example
+with `django_joist.security.joist_protected`. `schema()` is different: it is
+the raw cached snapshot, with no exclusions applied.
+
+To serve the whole dashboard from a view of your own, with that payload in
+the page so the browser never requests the schema endpoint, use
+`embedded_dashboard()`:
+
+```python
+from django.contrib.admin.views.decorators import staff_member_required
+from django_joist.views import embedded_dashboard
+
+
+@staff_member_required
+def schema_page(request):
+    return embedded_dashboard(request)          # or embedded_dashboard(request, "reporting")
+```
+
+It renders the packaged `joist/index.html` with the payload written through
+Django's `json_script`, which escapes `<`, `>` and `&` so no table name or
+column default can end the block early. Filter, focus and type labels work in
+the browser as usual. The page offers only the connection it embedded. Like
+`payload()` it is not gated, so the decorator above is yours to choose. The
+page's CSS and JS still come from Joist's asset routes, so Joist must be
+mounted and its authorizer must admit the viewer.
+
+A template of your own can use the same contract: put
+`{{ payload|json_script:"joist-payload" }}` inside the `joist-app`
+container, and the dashboard script reads it instead of fetching.
+
 ### MCP server
 
 Joist can also serve the same structure over the Model Context Protocol, so an

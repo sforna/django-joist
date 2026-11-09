@@ -34,6 +34,8 @@
         data-min-zoom="{{ min_zoom }}"
         data-doctor-flag-tables="{% if doctor_flag_tables %}1{% else %}0{% endif %}"
     >
+        {# A payload embedded by views.embedded_dashboard: the client draws it instead of fetching the schema endpoint. json_script escapes <, > and &, so no name or default can end the block early. #}
+        {% if embedded_payload is not None %}{{ embedded_payload|json_script:"joist-payload" }}{% endif %}
         <header class="joist-toolbar">
             <span class="joist-brand">
                 <svg class="joist-mark" width="20" height="20" viewBox="0 0 32 32" fill="none" stroke="currentColor" aria-hidden="true">

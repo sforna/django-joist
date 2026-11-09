@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `django_joist.payload(alias=None)` returns the dict the dashboard runs on,
+  in process and with no HTTP request: the snapshot with `excluded_tables`
+  filtered out, plus the `diff`, the `doctor` report and the
+  `diff_unavailable` / `cache_unavailable` flags, none of which `schema()`
+  carries. The JSON endpoint now serves the result of the same function, so
+  the two cannot differ. It runs no authorization, which belongs to whatever
+  page exposes it, and raises `ValueError` for an alias Joist does not manage.
+- The diagram can run on a payload embedded in the page instead of fetching
+  the schema endpoint. `django_joist.views.embedded_dashboard(request,
+  alias=None)` serves the dashboard page with `payload()` written into it,
+  for a view of your own to gate (`staff_member_required`, say); a template
+  of your own can do the same with `{{ payload|json_script:"joist-payload" }}`
+  inside the `joist-app` container. No schema request is made, and filter,
+  focus and type labels still work client-side. A malformed block is reported
+  in a banner rather than silently fetched. Joist's own dashboard is
+  unchanged and keeps fetching.
+
 ### Fixed
 
 - `joist_export --check` now prints a regenerate command that repeats the

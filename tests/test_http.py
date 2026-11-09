@@ -318,3 +318,62 @@ def test_export_route_bad_input_404(client, enabled):
     assert client.get(reverse("joist:export", args=["dbml"]), {"connection": "nope"}).status_code == 404
     assert client.get(reverse("joist:export", args=["dbml"]), {"focus": "ghost"}).status_code == 404
     assert client.get(reverse("joist:export", args=["dbml"]), {"only": "testapp_tag_and_nope"}).status_code == 404
+
+
+# -- embedded dashboard (a host page serving the payload in the document) ------
+def _embedded_block(body):
+    import re
+
+    match = re.search(r'<script id="joist-payload" type="application/json">(.*?)</script>', body, re.S)
+    return json.loads(match.group(1)) if match else None
+
+
+def test_index_embeds_no_payload(client, enabled):
+    body = client.get(reverse("joist:index")).content.decode()
+    assert _embedded_block(body) is None
+    assert "joist-payload" not in body
+
+
+def test_embedded_page_carries_the_payload_inside_the_app(client, enabled, settings_overrides):
+    settings_overrides("excluded_tables", ["testapp_tag"])
+    response = client.get(reverse("host_embedded"))
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "{%" not in body and "{{" not in body
+
+    # Inside the container, after its opening tag, where the client looks.
+    app_open = body.index('id="joist-app"')
+    assert body.index('<script id="joist-payload"') > app_open
+    assert body.index('<script id="joist-payload"') < body.index('<header class="joist-toolbar">')
+
+    import django_joist
+
+    embedded = _embedded_block(body)
+    assert embedded == json.loads(json.dumps(django_joist.payload()))
+    assert all(t["name"] != "testapp_tag" for t in embedded["tables"])
+
+
+@pytest.mark.django_db(databases=["default", "secondary"])
+def test_embedded_page_offers_only_the_embedded_connection(client, enabled, settings_overrides):
+    settings_overrides("connections", {"default": {}, "secondary": {}})
+    body = client.get(reverse("host_embedded"), {"connection": "secondary"}).content.decode()
+    assert _embedded_block(body)["connection"] == "secondary"
+    assert "data-connections='[\"secondary\"]'" in body
+
+
+def test_embedded_page_is_the_hosts_to_gate(client, settings, settings_overrides):
+    # Joist's own routes are off, the host's view still renders: who may see
+    # it is the host's decision, exactly as with payload().
+    settings_overrides("enabled", False)
+    settings_overrides("doctor.dashboard", False)
+    assert client.get(reverse("joist:index")).status_code == 404
+    response = client.get(reverse("host_embedded"))
+    assert response.status_code == 200
+    assert _embedded_block(response.content.decode())["tables"]
+
+
+def test_embedded_page_refuses_an_unmanaged_alias(rf, enabled):
+    from django_joist.views import embedded_dashboard
+
+    with pytest.raises(ValueError, match="not managed"):
+        embedded_dashboard(rf.get("/"), "not-configured")
